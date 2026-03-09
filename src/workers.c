@@ -2,12 +2,14 @@
 #include "signal_handling.h"
 
 #define _POSIX_C_SOURCE 200809L
+#define TIME_LENGTH 20 
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <time.h>
 #include <pthread.h>
+#include <string.h>
 
 typedef struct mutex_data{
 	int data;
@@ -50,20 +52,34 @@ void * worker_show(void * arg){
 
 void * worker_log(void * arg){
 	time_t rawtime;
-	struct tm * timeinfo;
 	struct timespec rec_log = {0,500000000};
 	mutex_data * shared_data = (mutex_data * ) arg;
-	static char buffer[100],time_buffer[20];
+	static char time_buffer[TIME_LENGTH];
 
-	FILE * file;
-	file = fopen("logs/test.txt","a+");
+	FILE * file = fopen("logs/test.txt","a+");
 
 	while( check_stop_requested() != 1 ){
-		time( &rawtime ); // Attribue le temps depuis le 1er Janvier 1970 dans  la variable
-		timeinfo = localtime( &rawtime ); // Transforme la durée en temps normal à notre période
-		strftime(time_buffer,20,"%d/%m/%Y %H:%M:%S",timeinfo);// Formatage
-		sprintf(buffer,"At %s,\t you had %d in shared_data\n",time_buffer,(*shared_data).data );
+	       	// Attribue le temps depuis le 1er Janvier 1970 dans  la variable
+		time( &rawtime );
+
+	       	// Transforme la durée en temps normal à notre période
+		struct tm * timeinfo = localtime( &rawtime );
+
+		// Formatage
+		strftime(time_buffer,TIME_LENGTH,"%d/%m/%Y %H:%M:%S",timeinfo);
+		
+		// Avoir la taille du message avant de malloc
+		int size = snprintf(NULL,0,"[%s]\tshared_data = %d;\n",time_buffer,(*shared_data).data );
+
+		// Var avec taille parfaite
+		char * buffer = (char *) malloc( size * sizeof(char) );
+
+		// Ecriture
+		sprintf(buffer,"[%s]\t shared_data = %d;\n",time_buffer,(*shared_data).data );
 		fputs(buffer,file);
+
+		// Free pour éviter les leaks
+		free(buffer);
 
 		nanosleep(&rec_log,NULL);
 	}

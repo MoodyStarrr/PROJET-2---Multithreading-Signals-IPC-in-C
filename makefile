@@ -29,5 +29,5 @@ gdb: $(BIN)
 	gdb ./$<
 
 valgrind: $(BIN)
-	valgrind --leak-check=full --show-leak-kinds=all ./$<
+	valgrind -s --leak-check=full --show-leak-kinds=all ./$<
 
