@@ -1,6 +1,8 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "signal_handling.h" // Entre guillemets car recherche dans le repertoire le plus proche qui s'appelle include
+#include "misc.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <signal.h>
