@@ -52,8 +52,6 @@ void * worker_log(void * arg){
 	Configuration * shared = (Configuration * ) arg;
 	static char time_buffer[TIME_LENGTH];
 
-	FILE * file = fopen("logs/test.txt","a+");
-
 	while( check_stop_requested() != 1 ){
 	       	// Attribue le temps depuis le 1er Janvier 1970 dans  la variable
 		time( &rawtime );
@@ -72,7 +70,7 @@ void * worker_log(void * arg){
 
 		// Ecriture
 		sprintf(buffer,"[%s]\t shared = %d;\n",time_buffer,(*shared).data );
-		fputs(buffer,file);
+		fputs(buffer,shared->file);
 
 		// Free pour éviter les leaks
 		free(buffer);
@@ -80,7 +78,7 @@ void * worker_log(void * arg){
 		nanosleep(&rec_log,NULL);
 	}
 
-	fclose(file);
+	fclose(shared->file);
 	printf("Logger properly closed\n");
 	pthread_exit(NULL);
 }

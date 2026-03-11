@@ -19,6 +19,12 @@ int main(void){
 
 	Configuration shared;
 	shared.data = 0;
+
+	int size_path_log = snprintf(NULL,0,"logs/app_exit.log");
+	shared.file_path = (char *) malloc( sizeof(char) * size_path_log );
+	shared.file_path = "logs/app_exit.log";
+	shared.file = fopen(shared.file_path,"a+");
+
 	pthread_mutex_init(&shared.MUTEX,NULL);
 	
 	// Signal Handling

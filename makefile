@@ -23,7 +23,7 @@ run: $(BIN)
 re: clean all
 
 clean:
-	@$(RM) -r $(BIN) build logs/*.txt
+	@$(RM) -r $(BIN) build logs/*.log
 
 gdb: $(BIN)
 	gdb ./$<
