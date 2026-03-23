@@ -16,15 +16,16 @@ void * worker_add(void * arg){
 	struct timespec rec_add = {0,250000000};
 	Configuration * shared = (Configuration * ) arg;
 
-	while(check_stop_requested() != 1 ){
-		pthread_mutex_lock( (&shared->MUTEX) );
+	while( shared->STOP != 1 ){
+		pthread_mutex_lock( &(shared->MUTEX) );
 
-		(*shared).data++;
+		shared->data++;
 
-		pthread_mutex_unlock( (&shared->MUTEX) );
+		pthread_mutex_unlock( &(shared->MUTEX) );
 		nanosleep(&rec_add,NULL);
 	}
-	printf("Add properly closed\n");
+
+//	printf("Add properly closed\n");
 
 	pthread_exit(NULL);
 }
@@ -33,15 +34,16 @@ void * worker_show(void * arg){
 	struct timespec rec_show = {1,0};
 	Configuration * shared = (Configuration * ) arg;
 
-	while(check_stop_requested() != 1 ){
-		pthread_mutex_lock( (&shared->MUTEX) );
+	while( shared->STOP != 1 ){
+		pthread_mutex_lock( &(shared->MUTEX) );
 
-		printf("%d in shared increment\n",(*shared).data);
-
-		pthread_mutex_unlock( (&shared->MUTEX) );
+		printf("%d in shared increment\n",shared->data);
+		
+		pthread_mutex_unlock( &(shared->MUTEX) );
 		nanosleep(&rec_show,NULL);
 	}
-	printf("Show properly closed\n");
+
+//	printf("Show properly closed\n");
 
 	pthread_exit(NULL);
 }
@@ -52,7 +54,7 @@ void * worker_log(void * arg){
 	Configuration * shared = (Configuration * ) arg;
 	static char time_buffer[TIME_LENGTH];
 
-	while( check_stop_requested() != 1 ){
+	while( shared->STOP != 1 ){
 	       	// Attribue le temps depuis le 1er Janvier 1970 dans  la variable
 		time( &rawtime );
 
@@ -63,13 +65,13 @@ void * worker_log(void * arg){
 		strftime(time_buffer,TIME_LENGTH,"%d/%m/%Y %H:%M:%S",timeinfo);
 		
 		// Avoir la taille du message avant de malloc
-		int size = snprintf(NULL,0,"[%s]\tshared = %d;\n",time_buffer,(*shared).data );
+		int size = snprintf(NULL,0,"[%s]\tshared = %d;\n",time_buffer,shared->data);
 
 		// Var avec taille parfaite
 		char * buffer = (char *) malloc( size * sizeof(char) );
 
 		// Ecriture
-		sprintf(buffer,"[%s]\t shared = %d;\n",time_buffer,(*shared).data );
+		sprintf(buffer,"[%s]\t shared = %d;\n",time_buffer,shared->data);
 		fputs(buffer,shared->file);
 
 		// Free pour éviter les leaks
@@ -79,6 +81,6 @@ void * worker_log(void * arg){
 	}
 
 	fclose(shared->file);
-	printf("Logger properly closed\n");
+//	printf("Logger properly closed\n");
 	pthread_exit(NULL);
 }

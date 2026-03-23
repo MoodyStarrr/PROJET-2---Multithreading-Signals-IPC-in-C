@@ -55,5 +55,5 @@ void wait_for_ending(void){
 		exit(EXIT_FAILURE);
 	}
 		
-	printf("Termination performed successfully.\n");
+	printf("\nTermination performed successfully.\n");
 }

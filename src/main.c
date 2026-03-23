@@ -18,7 +18,7 @@ pthread_t threads[NB_ADD + NB_SHOW + NB_LOG];
 int main(void){
 
 	Configuration shared;
-	shared.data = 0;
+	shared.data = shared.STOP = 0;
 
 	int size_path_log = snprintf(NULL,0,"logs/app_exit.log");
 	shared.file_path = (char *) malloc( sizeof(char) * size_path_log );
@@ -52,9 +52,10 @@ int main(void){
 		}
 	}
 
-	while( (shared.STOP = check_stop_requested()) ){
+	while( !check_stop_requested() ){
 		sleep(1);
 	};
+	shared.STOP = check_stop_requested();
 
 	// Pthread Join
 	for(int i = 0 ; i < NB_ADD + NB_SHOW + NB_LOG; i++){
