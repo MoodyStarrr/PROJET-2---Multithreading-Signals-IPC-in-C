@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <unistd.h>
 
 typedef struct {
 	FILE * file;
@@ -17,5 +18,7 @@ typedef struct {
 	int pipe[2];
 	pthread_mutex_t MUTEX;
 }Configuration;
+
+void write_str();
 
 #endif

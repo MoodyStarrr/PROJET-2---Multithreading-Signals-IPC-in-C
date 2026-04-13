@@ -9,22 +9,31 @@
 #include <unistd.h>
 #include <pthread.h>
 
-#define NB_ADD 10
+#define NB_ADD 15
 #define NB_SHOW 1
 #define NB_LOG 1
 
 pthread_t threads[NB_ADD + NB_SHOW + NB_LOG];
 
 int main(void){
-
+	// Var Init
 	Configuration shared;
 	shared.data = shared.STOP = 0;
 
+	// File Init
 	int size_path_log = snprintf(NULL,0,"logs/app_exit.log");
 	shared.file_path = (char *) malloc( sizeof(char) * size_path_log );
 	shared.file_path = "logs/app_exit.log";
 	shared.file = fopen(shared.file_path,"a+");
 
+	// Pipe Init
+	if( pipe(shared.pipe) == -1 ){
+		printf("Couldn't create pipe\n");
+		exit(EXIT_FAILURE);
+	}
+
+
+	// Pthread Init
 	pthread_mutex_init(&shared.MUTEX,NULL);
 	
 	// Signal Handling
