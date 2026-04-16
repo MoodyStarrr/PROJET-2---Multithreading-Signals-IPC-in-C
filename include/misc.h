@@ -19,6 +19,7 @@ typedef struct {
 	pthread_mutex_t MUTEX;
 }Configuration;
 
-void write_str();
+void write_str(int * pipe_id, char * str);
+void read_str(int * pipe_id, char * buf);
 
 #endif

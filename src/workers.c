@@ -14,14 +14,37 @@
 
 void * worker_add(void * arg){
 	struct timespec rec_add = {0,250000000};
+
 	Configuration * shared = (Configuration * ) arg;
 
+	static char time_buffer[TIME_LENGTH];
+	time_t rawtime;
+
 	while( shared->STOP != 1 ){
+
+	       	// Attribue le temps depuis le 1er Janvier 1970 dans  la variable
+		time( &rawtime );
+	       	// Transforme la durée en temps normal à notre période
+		struct tm * timeinfo = localtime( &rawtime );
+		// Formatage
+		strftime(time_buffer,TIME_LENGTH,"%d/%m/%Y %H:%M:%S",timeinfo);
+
 		pthread_mutex_lock( &(shared->MUTEX) );
+		close(shared->pipe[0]);
 
 		shared->data++;
 
+		char * buffer;
+		int size = snprintf(NULL,0,"buffer=%p,data=%d,timestamp=%s",buffer,shared->data,time_buffer);
+		size = snprintf(NULL,0,"length=%d,buffer=%p,data=%d,timestamp=%s",size,buffer,shared->data,time_buffer);
+		buffer = (char * ) malloc( size * sizeof(char));
+		sprintf(buffer,"length=%d,buffer=%p,data=%d,timestamp=%s",size,buffer,shared->data,time_buffer);
+
+		write_str(shared->pipe_id,buffer);
+
+		close(shared->pipe([1]);
 		pthread_mutex_unlock( &(shared->MUTEX) );
+
 		nanosleep(&rec_add,NULL);
 	}
 
@@ -49,29 +72,17 @@ void * worker_show(void * arg){
 }
 
 void * worker_log(void * arg){
-	time_t rawtime;
 	struct timespec rec_log = {0,500000000};
 	Configuration * shared = (Configuration * ) arg;
-	static char time_buffer[TIME_LENGTH];
 
 	while( shared->STOP != 1 ){
-	       	// Attribue le temps depuis le 1er Janvier 1970 dans  la variable
-		time( &rawtime );
+		// Lecture du pipe
 
-	       	// Transforme la durée en temps normal à notre période
-		struct tm * timeinfo = localtime( &rawtime );
 
-		// Formatage
-		strftime(time_buffer,TIME_LENGTH,"%d/%m/%Y %H:%M:%S",timeinfo);
-		
-		// Avoir la taille du message avant de malloc
-		int size = snprintf(NULL,0,"[%s]\tshared = %d;\n",time_buffer,shared->data);
+		// Déchiffrage du message recu
 
-		// Var avec taille parfaite
-		char * buffer = (char *) malloc( size * sizeof(char) );
-
-		// Ecriture
-		sprintf(buffer,"[%s]\t shared = %d;\n",time_buffer,shared->data);
+		// Ecriture dans le log
+		// sprintf(buffer,"[%s]\t shared = %d;\n",time_buffer,shared->data);
 		fputs(buffer,shared->file);
 
 		// Free pour éviter les leaks
