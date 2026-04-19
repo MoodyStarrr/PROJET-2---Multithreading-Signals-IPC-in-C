@@ -29,26 +29,31 @@ void * worker_add(void * arg){
 		// Formatage
 		strftime(time_buffer,TIME_LENGTH,"%d/%m/%Y %H:%M:%S",timeinfo);
 
+		// Race Protection
 		pthread_mutex_lock( &(shared->MUTEX) );
-		close(shared->pipe[0]);
 
+		// Increment
 		shared->data++;
 
+		// Generation du texte
 		char * buffer;
-		int size = snprintf(NULL,0,"buffer=%p,data=%d,timestamp=%s",buffer,shared->data,time_buffer);
-		size = snprintf(NULL,0,"length=%d,buffer=%p,data=%d,timestamp=%s",size,buffer,shared->data,time_buffer);
+		int size = snprintf(NULL,0,"data=%d\ttimestamp=%s",shared->data,time_buffer);
 		buffer = (char * ) malloc( size * sizeof(char));
-		sprintf(buffer,"length=%d,buffer=%p,data=%d,timestamp=%s",size,buffer,shared->data,time_buffer);
 
-		write_str(shared->pipe_id,buffer);
+		// "Ecriture" du message
+		Message to_send;
+		to_send.ptr = buffer;
+		to_send.length = size;
 
-		close(shared->pipe([1]);
+		// Ecriture dans le pipe
+		write_msg(shared->pipe[1],&to_send);
+
+		// Race Protection
 		pthread_mutex_unlock( &(shared->MUTEX) );
 
+		// Périodicicté
 		nanosleep(&rec_add,NULL);
 	}
-
-//	printf("Add properly closed\n");
 
 	pthread_exit(NULL);
 }
@@ -60,13 +65,11 @@ void * worker_show(void * arg){
 	while( shared->STOP != 1 ){
 		pthread_mutex_lock( &(shared->MUTEX) );
 
-		printf("%d in shared increment\n",shared->data);
+		//printf("%d in shared increment\n",shared->data);
 		
 		pthread_mutex_unlock( &(shared->MUTEX) );
 		nanosleep(&rec_show,NULL);
 	}
-
-//	printf("Show properly closed\n");
 
 	pthread_exit(NULL);
 }
@@ -76,22 +79,29 @@ void * worker_log(void * arg){
 	Configuration * shared = (Configuration * ) arg;
 
 	while( shared->STOP != 1 ){
-		// Lecture du pipe
 
+		Message received;
+		// Lecture du pipe
+		read(shared->pipe[0],&received,sizeof(received));
 
 		// Déchiffrage du message recu
+		char * buffer = received.ptr;
+		char to_log[received.length + 1];
+		
+		for(int i = 0 ; i < received.length ; i++){
+			to_log[i] = buffer[i];
+		}
+		to_log[received.length + 1] = '\0';
 
 		// Ecriture dans le log
-		// sprintf(buffer,"[%s]\t shared = %d;\n",time_buffer,shared->data);
-		fputs(buffer,shared->file);
+		fputs(to_log,shared->file);
 
 		// Free pour éviter les leaks
-		free(buffer);
+		free(received.ptr);
 
 		nanosleep(&rec_log,NULL);
 	}
 
 	fclose(shared->file);
-//	printf("Logger properly closed\n");
 	pthread_exit(NULL);
 }
