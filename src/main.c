@@ -32,7 +32,6 @@ int main(void){
 		exit(EXIT_FAILURE);
 	}
 
-
 	// Pthread Init
 	pthread_mutex_init(&shared.MUTEX,NULL);
 	
@@ -40,22 +39,22 @@ int main(void){
 	init_signal();
 
 	// Pthread Creation
-	for(int i = 0 ; i < NB_ADD ; i++){
-		if( pthread_create(&threads[i],NULL,*worker_add,&shared) != 0 ){
+	for(int i = 0 ; i < NB_LOG ; i++){
+		if( pthread_create(&threads[i],NULL,*worker_log,&shared) != 0 ){
 			printf("Couldn't create all adders\n");
 			exit(EXIT_FAILURE);
 		}
 	}
 
-	for(int i = NB_ADD ; i < NB_SHOW + NB_ADD ; i++){
+	for(int i = NB_LOG ; i < NB_SHOW + NB_LOG ; i++){
 		if( pthread_create(&threads[i],NULL,*worker_show,&shared) != 0 ){
 			printf("Couldn't create all showers\n");
 			exit(EXIT_FAILURE);
 		}
 	}
 
-	for(int i = NB_SHOW + NB_ADD ; i < NB_SHOW + NB_ADD + NB_LOG ; i++){
-		if( pthread_create(&threads[i],NULL,*worker_log,&shared) != 0 ){
+	for(int i = NB_SHOW + NB_LOG ; i < NB_SHOW + NB_ADD + NB_LOG ; i++){
+		if( pthread_create(&threads[i],NULL,*worker_add,&shared) != 0 ){
 			printf("Couldn't create all loggers\n");
 			exit(EXIT_FAILURE);
 		}
@@ -65,6 +64,7 @@ int main(void){
 		sleep(1);
 	};
 	shared.STOP = check_stop_requested();
+	close(shared.pipe[1]);
 
 	// Pthread Join
 	for(int i = 0 ; i < NB_ADD + NB_SHOW + NB_LOG; i++){

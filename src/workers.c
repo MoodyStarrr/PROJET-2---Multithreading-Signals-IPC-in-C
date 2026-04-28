@@ -16,6 +16,8 @@ void * worker_add(void * arg){
 	struct timespec rec_add = {0,250000000};
 
 	Configuration * shared = (Configuration * ) arg;
+	close(shared->pipe[0]);
+	printf("Fermeture du bout de lecture\n");
 
 	static char time_buffer[TIME_LENGTH];
 	time_t rawtime;
@@ -38,7 +40,7 @@ void * worker_add(void * arg){
 		// Generation du texte
 		char * buffer;
 		int size = snprintf(NULL,0,"data=%d\ttimestamp=%s",shared->data,time_buffer);
-		buffer = (char * ) malloc( size * sizeof(char));
+		buffer = (char * ) malloc( (size + 1) * sizeof(char));
 
 		// "Ecriture" du message
 		Message to_send;
@@ -58,6 +60,47 @@ void * worker_add(void * arg){
 	pthread_exit(NULL);
 }
 
+void * worker_log(void * arg){
+	struct timespec rec_log = {0,500000000};
+	Configuration * shared = (Configuration * ) arg;
+	close(shared->pipe[1]);
+	printf("Fermeture du bout d'écriture\n");
+
+	while( shared->STOP != 1 ){
+
+		Message received;
+		// Lecture du pipe
+		if (read(shared->pipe[0],&received,sizeof(received)) == -1){
+			printf("Couldn't read\n");
+			exit(EXIT_FAILURE);
+		};
+
+		// Déchiffrage du message recu
+		char * buffer = (char *) received.ptr;
+		char to_log[received.length + 1];
+		
+		/*
+		for(int i = 0 ; i < received.length ; i++){
+			to_log[i] = buffer[i];
+		}
+		to_log[received.length + 1] = '\0';
+		*/
+
+		printf("%s/n",buffer);
+
+		// Ecriture dans le log
+		fputs(to_log,shared->file);
+
+		// Free pour éviter les leaks
+		free(received.ptr);
+
+		nanosleep(&rec_log,NULL);
+	}
+
+	fclose(shared->file);
+	pthread_exit(NULL);
+}
+
 void * worker_show(void * arg){
 	struct timespec rec_show = {1,0};
 	Configuration * shared = (Configuration * ) arg;
@@ -71,37 +114,5 @@ void * worker_show(void * arg){
 		nanosleep(&rec_show,NULL);
 	}
 
-	pthread_exit(NULL);
-}
-
-void * worker_log(void * arg){
-	struct timespec rec_log = {0,500000000};
-	Configuration * shared = (Configuration * ) arg;
-
-	while( shared->STOP != 1 ){
-
-		Message received;
-		// Lecture du pipe
-		read(shared->pipe[0],&received,sizeof(received));
-
-		// Déchiffrage du message recu
-		char * buffer = received.ptr;
-		char to_log[received.length + 1];
-		
-		for(int i = 0 ; i < received.length ; i++){
-			to_log[i] = buffer[i];
-		}
-		to_log[received.length + 1] = '\0';
-
-		// Ecriture dans le log
-		fputs(to_log,shared->file);
-
-		// Free pour éviter les leaks
-		free(received.ptr);
-
-		nanosleep(&rec_log,NULL);
-	}
-
-	fclose(shared->file);
 	pthread_exit(NULL);
 }
