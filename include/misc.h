@@ -24,7 +24,16 @@ typedef struct {
 	int length;
 }Message;
 
-void write_msg(int pipe_id, Message * to_send);
+typedef enum{
+	PIPE_OK,
+	PIPE_EOF,
+	PIPE_CLOSED,
+	PIPE_ERROR,
+	UNKNOWN
+}ipc_status_t;
+
+ipc_status_t write_msg(int pipe_write_id, Message * to_send);
+ipc_status_t read_msg(int pipe_read_id, Message * received);
 
 
 #endif

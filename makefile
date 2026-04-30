@@ -24,6 +24,7 @@ re: clean all
 
 clean:
 	@$(RM) -r $(BIN) build logs/*
+	clear
 
 gdb: $(BIN)
 	gdb ./$<

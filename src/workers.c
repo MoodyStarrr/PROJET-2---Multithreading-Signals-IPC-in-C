@@ -22,7 +22,8 @@ void * worker_add(void * arg){
 	static char time_buffer[TIME_LENGTH];
 	time_t rawtime;
 
-	while( shared->STOP != 1 ){
+	int run = 1;
+	while( shared->STOP != 1 || run != 1){
 
 	       	// Attribue le temps depuis le 1er Janvier 1970 dans  la variable
 		time( &rawtime );
@@ -38,9 +39,8 @@ void * worker_add(void * arg){
 		shared->data++;
 
 		// Generation du texte
-		char * buffer;
-		int size = snprintf(NULL,0,"data=%d\ttimestamp=%s",shared->data,time_buffer);
-		buffer = (char * ) malloc( (size + 1) * sizeof(char));
+		int size = snprintf(NULL,0,"data=%d\ttimestamp=%s",shared->data,time_buffer) + 1;
+		char * buffer = (char * ) malloc( size * sizeof(char));
 
 		// "Ecriture" du message
 		Message to_send;
@@ -48,7 +48,24 @@ void * worker_add(void * arg){
 		to_send.length = size;
 
 		// Ecriture dans le pipe
-		write_msg(shared->pipe[1],&to_send);
+		ipc_status_t status = write_msg( shared->pipe[1], &to_send);
+		switch (status)
+		{
+			case PIPE_OK :
+				run = 1;
+				break;
+			case PIPE_CLOSED :
+				run = 0;
+				close( shared->pipe[1]);
+				break;
+			case PIPE_ERROR :
+				run = 0;
+				break;
+			default:
+				printf("OUT OF RANGE\n");
+				run = 0;
+		}
+				
 
 		// Race Protection
 		pthread_mutex_unlock( &(shared->MUTEX) );
@@ -66,33 +83,45 @@ void * worker_log(void * arg){
 	close(shared->pipe[1]);
 	printf("Fermeture du bout d'écriture\n");
 
-	while( shared->STOP != 1 ){
+	int run = 1;
+	while( shared->STOP != 1 || run != 1){
 
 		Message received;
 		// Lecture du pipe
-		if (read(shared->pipe[0],&received,sizeof(received)) == -1){
-			printf("Couldn't read\n");
-			exit(EXIT_FAILURE);
-		};
-
-		// Déchiffrage du message recu
+		ipc_status_t status = read_msg( shared->pipe[0], &received);
 		char * buffer = (char *) received.ptr;
-		char to_log[received.length + 1];
+		char to_log[received.length];
+		switch (status)
+		{
+			case PIPE_OK:
+				run = 1;
 		
-		/*
-		for(int i = 0 ; i < received.length ; i++){
-			to_log[i] = buffer[i];
+				for(int i = 0 ; i < received.length ; i++){
+					to_log[i] = buffer[i];
+				}
+		
+				printf("%s/n",to_log);
+
+				// Ecriture dans le log
+				fputs(to_log,shared->file);
+
+				// Free pour éviter les leaks
+				free(received.ptr);
+
+				break;
+			case PIPE_EOF:
+				run = 0;
+				close( shared->pipe[0] );
+				break;
+			case PIPE_ERROR:
+				// log erreur dans le futur
+				run = 0;
+				break;
+			default:
+				printf("OUT OF RANGE\n");
+				run = 0;
+
 		}
-		to_log[received.length + 1] = '\0';
-		*/
-
-		printf("%s/n",buffer);
-
-		// Ecriture dans le log
-		fputs(to_log,shared->file);
-
-		// Free pour éviter les leaks
-		free(received.ptr);
 
 		nanosleep(&rec_log,NULL);
 	}
