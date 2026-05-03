@@ -23,7 +23,7 @@ void * worker_add(void * arg){
 	time_t rawtime;
 
 	int run = 1;
-	while( shared->STOP != 1 || run != 1){
+	while( shared->STOP != 1 && run == 1){
 
 	       	// Attribue le temps depuis le 1er Janvier 1970 dans  la variable
 		time( &rawtime );
@@ -39,8 +39,12 @@ void * worker_add(void * arg){
 		shared->data++;
 
 		// Generation du texte
-		int size = snprintf(NULL,0,"data=%d\ttimestamp=%s",shared->data,time_buffer) + 1;
-		char * buffer = (char * ) malloc( size * sizeof(char));
+		int size = snprintf(NULL,0,"data=%d\ttimestamp=%s",shared->data,time_buffer);
+		char * buffer = (char * ) malloc( (size+1) * sizeof(char));
+		int check = sprintf(buffer,"data=%d\ttimestamp=%s",shared->data,time_buffer);
+		if( check != size ){
+			printf("Couldn't write properly\n");
+		}
 
 		// "Ecriture" du message
 		Message to_send;
@@ -56,13 +60,16 @@ void * worker_add(void * arg){
 				break;
 			case PIPE_CLOSED :
 				run = 0;
+				printf("\nPIPE CLOSE\n");
 				close( shared->pipe[1]);
 				break;
 			case PIPE_ERROR :
+				printf("\nPIPE ERROR\n");
 				run = 0;
+				close( shared->pipe[1]);
 				break;
 			default:
-				printf("OUT OF RANGE\n");
+				printf("\nOUT OF RANGE\n");
 				run = 0;
 		}
 				
@@ -84,7 +91,7 @@ void * worker_log(void * arg){
 	printf("Fermeture du bout d'écriture\n");
 
 	int run = 1;
-	while( shared->STOP != 1 || run != 1){
+	while( shared->STOP != 1 && run == 1){
 
 		Message received;
 		// Lecture du pipe
@@ -97,7 +104,8 @@ void * worker_log(void * arg){
 				run = 1;
 		
 				for(int i = 0 ; i < received.length ; i++){
-					to_log[i] = buffer[i];
+					//to_log[i] = buffer[i];
+					printf("%c\n",buffer[i]);
 				}
 		
 				printf("%s/n",to_log);
