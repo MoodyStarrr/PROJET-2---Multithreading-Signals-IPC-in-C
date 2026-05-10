@@ -16,14 +16,15 @@ void * worker_add(void * arg){
 	struct timespec rec_add = {0,250000000};
 
 	Configuration * shared = (Configuration * ) arg;
-	close(shared->pipe[0]);
-	printf("Fermeture du bout de lecture\n");
 
 	static char time_buffer[TIME_LENGTH];
 	time_t rawtime;
 
 	int run = 1;
-	while( shared->STOP != 1 && run == 1){
+	while(1){
+		if(shared->STOP) break;
+		if(run == 0) break;
+
 
 	       	// Attribue le temps depuis le 1er Janvier 1970 dans  la variable
 		time( &rawtime );
@@ -39,9 +40,9 @@ void * worker_add(void * arg){
 		shared->data++;
 
 		// Generation du texte
-		int size = snprintf(NULL,0,"data=%d\ttimestamp=%s",shared->data,time_buffer);
+		int size = snprintf(NULL,0,"data=%d\ttimestamp=%s\n",shared->data,time_buffer);
 		char * buffer = (char * ) malloc( (size+1) * sizeof(char));
-		int check = sprintf(buffer,"data=%d\ttimestamp=%s",shared->data,time_buffer);
+		int check = sprintf(buffer,"data=%d\ttimestamp=%s\n",shared->data,time_buffer);
 		if( check != size ){
 			printf("Couldn't write properly\n");
 		}
@@ -61,12 +62,10 @@ void * worker_add(void * arg){
 			case PIPE_CLOSED :
 				run = 0;
 				printf("\nPIPE CLOSE\n");
-				close( shared->pipe[1]);
 				break;
 			case PIPE_ERROR :
 				printf("\nPIPE ERROR\n");
 				run = 0;
-				close( shared->pipe[1]);
 				break;
 			default:
 				printf("\nOUT OF RANGE\n");
@@ -80,35 +79,34 @@ void * worker_add(void * arg){
 		// Périodicicté
 		nanosleep(&rec_add,NULL);
 	}
+	printf("Closing add thread\n");
 
 	pthread_exit(NULL);
 }
 
 void * worker_log(void * arg){
-	struct timespec rec_log = {0,500000000};
+	struct timespec rec_log = {0,125000000};
 	Configuration * shared = (Configuration * ) arg;
-	close(shared->pipe[1]);
-	printf("Fermeture du bout d'écriture\n");
 
 	int run = 1;
-	while( shared->STOP != 1 && run == 1){
+	while( run == 1){
 
 		Message received;
 		// Lecture du pipe
 		ipc_status_t status = read_msg( shared->pipe[0], &received);
 		char * buffer = (char *) received.ptr;
 		char to_log[received.length];
+		memset(to_log,0,sizeof(to_log));
 		switch (status)
 		{
 			case PIPE_OK:
 				run = 1;
 		
 				for(int i = 0 ; i < received.length ; i++){
-					//to_log[i] = buffer[i];
-					printf("%c\n",buffer[i]);
+					to_log[i] = buffer[i];
 				}
 		
-				printf("%s/n",to_log);
+				printf("%s",to_log);
 
 				// Ecriture dans le log
 				fputs(to_log,shared->file);
@@ -119,7 +117,8 @@ void * worker_log(void * arg){
 				break;
 			case PIPE_EOF:
 				run = 0;
-				close( shared->pipe[0] );
+				//close( shared->pipe[0] );
+				printf("Received STOP == 1. Closing Pipe.\n");
 				break;
 			case PIPE_ERROR:
 				// log erreur dans le futur
@@ -134,7 +133,8 @@ void * worker_log(void * arg){
 		nanosleep(&rec_log,NULL);
 	}
 
-	fclose(shared->file);
+	printf("Closing logger thread\n");
+	//fclose(shared->file);
 	pthread_exit(NULL);
 }
 

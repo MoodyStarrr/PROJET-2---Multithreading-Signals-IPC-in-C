@@ -9,7 +9,7 @@ ipc_status_t write_msg(int pipe_write_id, Message * to_send ){
 	int res = write( pipe_write_id, to_send, sizeof(Message) );
 	if(res > 0){
 		return PIPE_OK;
-	}else if(res + errno == EPIPE){
+	}else if(res < 0 && errno == EPIPE){
 		return PIPE_CLOSED;
 	}else if(res < 0){
 		return PIPE_ERROR;
@@ -18,7 +18,7 @@ ipc_status_t write_msg(int pipe_write_id, Message * to_send ){
 }
 
 ipc_status_t read_msg(int pipe_read_id, Message * received){
-	int res = read( pipe_read_id, received, sizeof(Message) );
+	int res = read( pipe_read_id, received, sizeof(* received) );
 	if(res > 0){
 		return PIPE_OK;
 	}else if(res == 0){
