@@ -54,6 +54,10 @@ void * worker_add(void * arg){
 
 		// Ecriture dans le pipe
 		ipc_status_t status = write_msg( shared->pipe[1], &to_send);
+
+		// Increment NB_MESSAGE_ENV
+		shared->NB_MESSAGE_ENV++;
+
 		switch (status)
 		{
 			case PIPE_OK :
@@ -79,7 +83,7 @@ void * worker_add(void * arg){
 		// Périodicicté
 		nanosleep(&rec_add,NULL);
 	}
-	printf("Closing add thread\n");
+	//printf("Closing add thread\n");
 
 	pthread_exit(NULL);
 }
@@ -101,12 +105,14 @@ void * worker_log(void * arg){
 		{
 			case PIPE_OK:
 				run = 1;
+				// Increment NB_MESSAGE_REC
+				shared->NB_MESSAGE_REC++;
 		
 				for(int i = 0 ; i < received.length ; i++){
 					to_log[i] = buffer[i];
 				}
 		
-				printf("%s",to_log);
+				//printf("%s",to_log);
 
 				// Ecriture dans le log
 				fputs(to_log,shared->file);
@@ -118,7 +124,7 @@ void * worker_log(void * arg){
 			case PIPE_EOF:
 				run = 0;
 				//close( shared->pipe[0] );
-				printf("Received STOP == 1. Closing Pipe.\n");
+				//printf("Received STOP == 1. Closing Pipe.\n");
 				break;
 			case PIPE_ERROR:
 				// log erreur dans le futur
@@ -133,8 +139,29 @@ void * worker_log(void * arg){
 		nanosleep(&rec_log,NULL);
 	}
 
-	printf("Closing logger thread\n");
-	//fclose(shared->file);
+	//printf("Closing logger thread\n");
+	pthread_exit(NULL);
+}
+
+void * worker_heartbeat(void * arg){
+	struct timespec rec_heartbeat = {1,0};
+	Configuration * shared = (Configuration * ) arg;
+	//printf("\nCreated heartbeat thread\n");
+
+	//float t_since_start = 0;
+	while( shared->STOP != 1 ){
+		pthread_mutex_lock( &(shared->MUTEX) );
+
+		printf("%d messages sent.\n",shared->NB_MESSAGE_ENV);
+		printf("%d messages received\n\n",shared->NB_MESSAGE_REC);
+		
+		pthread_mutex_unlock( &(shared->MUTEX) );
+		nanosleep(&rec_heartbeat,NULL);
+		
+		/*t_since_start += rec_heartbeat.tv_sec + rec_heartbeat.tv_nsec;
+		printf("Time since start = %f.\n",t_since_start);*/
+	}
+
 	pthread_exit(NULL);
 }
 

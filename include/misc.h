@@ -13,7 +13,8 @@ typedef struct {
 	char * format;
 	int STOP;
 	int data;
-	int NB_MESSAGE;
+	int NB_MESSAGE_ENV;
+	int NB_MESSAGE_REC;
 	int freq_heartbeat;
 	int pipe[2];
 	pthread_mutex_t MUTEX;

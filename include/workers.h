@@ -5,6 +5,8 @@ void * worker_add(void * arg);
 
 void * worker_show(void * arg);
 
+void * worker_heartbeat(void * arg);
+
 void * worker_log(void * arg);
 
 #endif
