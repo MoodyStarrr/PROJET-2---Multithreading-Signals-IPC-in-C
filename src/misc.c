@@ -27,5 +27,25 @@ ipc_status_t read_msg(int pipe_read_id, Message * received){
 		return PIPE_ERROR;
 	}
 	return UNKNOWN;
-};
+}
+
+int parse_conf(Configuration * shared){
+	shared->data = 0;
+	shared->STOP = 0;
+	shared->NB_MESSAGE_REC = 0;
+	shared->NB_MESSAGE_ENV = 0;
+
+	FILE * conf_file = fopen("systemd/projet_2_app.conf","r+");
+	char * line = NULL;
+	size_t len;
+
+	while(getline(&line,&len,conf_file) != -1){
+
+
+	}
+
+	fclose(conf_file);
+	free(line);
+	return EXIT_SUCCESS;
+}
 

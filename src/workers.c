@@ -11,6 +11,7 @@
 #include <time.h>
 #include <pthread.h>
 #include <string.h>
+#include <math.h>
 
 void * worker_add(void * arg){
 	struct timespec rec_add = {0,250000000};
@@ -65,7 +66,6 @@ void * worker_add(void * arg){
 				break;
 			case PIPE_CLOSED :
 				run = 0;
-				printf("\nPIPE CLOSE\n");
 				break;
 			case PIPE_ERROR :
 				printf("\nPIPE ERROR\n");
@@ -83,7 +83,6 @@ void * worker_add(void * arg){
 		// Périodicicté
 		nanosleep(&rec_add,NULL);
 	}
-	//printf("Closing add thread\n");
 
 	pthread_exit(NULL);
 }
@@ -111,8 +110,6 @@ void * worker_log(void * arg){
 				for(int i = 0 ; i < received.length ; i++){
 					to_log[i] = buffer[i];
 				}
-		
-				//printf("%s",to_log);
 
 				// Ecriture dans le log
 				fputs(to_log,shared->file);
@@ -123,7 +120,6 @@ void * worker_log(void * arg){
 				break;
 			case PIPE_EOF:
 				run = 0;
-				//close( shared->pipe[0] );
 				//printf("Received STOP == 1. Closing Pipe.\n");
 				break;
 			case PIPE_ERROR:
@@ -139,29 +135,29 @@ void * worker_log(void * arg){
 		nanosleep(&rec_log,NULL);
 	}
 
-	//printf("Closing logger thread\n");
 	pthread_exit(NULL);
 }
 
 void * worker_heartbeat(void * arg){
-	struct timespec rec_heartbeat = {1,0};
 	Configuration * shared = (Configuration * ) arg;
-	//printf("\nCreated heartbeat thread\n");
+	struct timespec rec_heartbeat = {1,250000000};
 
-	//float t_since_start = 0;
+	float t_since_start = 0;
 	while( shared->STOP != 1 ){
+		t_since_start += (rec_heartbeat.tv_sec + rec_heartbeat.tv_nsec/pow(10,9));
+		printf("Time since start = %f.\n",t_since_start);
+
 		pthread_mutex_lock( &(shared->MUTEX) );
 
 		printf("%d messages sent.\n",shared->NB_MESSAGE_ENV);
-		printf("%d messages received\n\n",shared->NB_MESSAGE_REC);
+		printf("%d messages received\n",shared->NB_MESSAGE_REC);
 		
+		(shared->NB_MESSAGE_ENV != shared->NB_MESSAGE_REC) ? printf("nb msg sent != nb msg received\n") :printf("Link OK\n\n") ;
+
 		pthread_mutex_unlock( &(shared->MUTEX) );
 		nanosleep(&rec_heartbeat,NULL);
-		
-		/*t_since_start += rec_heartbeat.tv_sec + rec_heartbeat.tv_nsec;
-		printf("Time since start = %f.\n",t_since_start);*/
-	}
 
+	}
 	pthread_exit(NULL);
 }
 

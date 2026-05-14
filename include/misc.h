@@ -35,6 +35,7 @@ typedef enum{
 
 ipc_status_t write_msg(int pipe_write_id, Message * to_send);
 ipc_status_t read_msg(int pipe_read_id, Message * received);
+int parse_conf(Configuration * shared);
 
 
 #endif
