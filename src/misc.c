@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
+#include <string.h>
 
 ipc_status_t write_msg(int pipe_write_id, Message * to_send ){
 	int res = write( pipe_write_id, to_send, sizeof(Message) );
@@ -40,9 +41,28 @@ int parse_conf(Configuration * shared){
 	size_t len;
 
 	while(getline(&line,&len,conf_file) != -1){
-
-
+		char * token = strtok(line,"=");
+		strcmp(token,"log_path") ? printf("Yes") : printf("No"); 
+		if( strcmp(token,"log_path") == 0 ){
+			token = strtok(NULL,"\n");
+			int size_path_log = snprintf(NULL,0,token);
+			shared->file_path = (char *) malloc(sizeof(char) * size_path_log);
+			memcpy(shared->file_path,token, sizeof(char) * size_path_log);
+		}else if( strcmp(token,"log_format") == 0 ){
+			token = strtok(NULL,"\n");
+			int size_log_format = snprintf(NULL,0,token);
+			shared->format = (char *) malloc(sizeof(char) * size_log_format);
+			memcpy(shared->format,token,sizeof(char) * size_log_format);
+		}else if( strcmp(token,"period_ms") == 0 ){
+			token = strtok(NULL,"\n");
+			int value = (int) strtol(token,(char **) NULL,10);
+			shared->freq_heartbeat = value;
+		}else{
+			printf("%s is not part of configuration.\n",token);
+		}		
 	}
+
+	shared->file = fopen(shared->file_path,"a+");
 
 	fclose(conf_file);
 	free(line);

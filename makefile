@@ -27,6 +27,7 @@ clean:
 	clear
 
 gdb: $(BIN)
+	clear
 	gdb ./$<
 
 valgrind: $(BIN)

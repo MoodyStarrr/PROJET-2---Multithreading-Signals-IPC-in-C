@@ -19,13 +19,17 @@ pthread_t threads[NB_ADD + NB_SHOW + NB_LOG + NB_HEART];
 int main(void){
 	// Var Init
 	Configuration shared;
-	shared.data = shared.STOP = shared.NB_MESSAGE_REC = shared.NB_MESSAGE_ENV = 0;
+	//shared.data = shared.STOP = shared.NB_MESSAGE_REC = shared.NB_MESSAGE_ENV = 0;
 
 	// File Init
 	//int size_path_log = snprintf(NULL,0,"logs/app_exit.log");
 	//shared.file_path = (char *) malloc( sizeof(char) * size_path_log );
-	shared.file_path = "logs/app_exit.log";
-	shared.file = fopen(shared.file_path,"a+");
+	//shared.file_path = "logs/app_exit.log";
+	//shared.file = fopen(shared.file_path,"a+");
+	if( parse_conf(&shared) == -1){
+		printf("Couldn't parse configuration file\n");
+		exit(EXIT_FAILURE);
+	}
 
 	// Pipe Init
 	if( pipe(shared.pipe) == -1 ){
