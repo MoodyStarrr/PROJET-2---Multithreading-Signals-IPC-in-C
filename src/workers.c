@@ -41,9 +41,10 @@ void * worker_add(void * arg){
 		shared->data++;
 
 		// Generation du texte
-		int size = snprintf(NULL,0,"data=%d\ttimestamp=%s\n",shared->data,time_buffer);
+		int size = snprintf(NULL,0,"[%s]\tdata=%d\n",time_buffer,shared->data);
 		char * buffer = (char * ) malloc( (size+1) * sizeof(char));
-		int check = sprintf(buffer,"data=%d\ttimestamp=%s\n",shared->data,time_buffer);
+		int check = sprintf(buffer,"[%s]\tdata=%d\n",time_buffer,shared->data);
+
 		if( check != size ){
 			printf("Couldn't write properly\n");
 		}
@@ -113,6 +114,9 @@ void * worker_log(void * arg){
 
 				// Ecriture dans le log
 				fputs(to_log,shared->file);
+				if(shared->flush_log == 1)
+					fflush(shared->file);
+				
 
 				// Free pour éviter les leaks
 				free(received.ptr);
@@ -140,7 +144,7 @@ void * worker_log(void * arg){
 
 void * worker_heartbeat(void * arg){
 	Configuration * shared = (Configuration * ) arg;
-	struct timespec rec_heartbeat = {1,250000000};
+	struct timespec rec_heartbeat = {(shared->freq_heartbeat/1000) , (shared->freq_heartbeat%1000) * pow(10,6)};
 
 	float t_since_start = 0;
 	while( shared->STOP != 1 ){

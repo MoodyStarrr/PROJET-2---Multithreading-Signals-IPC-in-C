@@ -42,7 +42,7 @@ int parse_conf(Configuration * shared){
 
 	while(getline(&line,&len,conf_file) != -1){
 		char * token = strtok(line,"=");
-		strcmp(token,"log_path") ? printf("Yes") : printf("No"); 
+
 		if( strcmp(token,"log_path") == 0 ){
 			token = strtok(NULL,"\n");
 			int size_path_log = snprintf(NULL,0,token);
@@ -57,8 +57,16 @@ int parse_conf(Configuration * shared){
 			token = strtok(NULL,"\n");
 			int value = (int) strtol(token,(char **) NULL,10);
 			shared->freq_heartbeat = value;
+		}else if( strcmp(token,"flush_log") == 0 ){
+			token = strtok(NULL,"\n");
+			int value = (int) strtol(token,(char **) NULL,10);
+			shared->flush_log = value;
+		}else if( strcmp(token,"NB_WORKER_ADD") == 0 ){
+			token = strtok(NULL,"\n");
+			int value = (int) strtol(token,(char **) NULL,10);
+			shared->NB_WORKER_ADD = value;
 		}else{
-			printf("%s is not part of configuration.\n",token);
+			//printf("%s is not part of configuration.\n",token);
 		}		
 	}
 

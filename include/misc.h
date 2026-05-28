@@ -11,10 +11,12 @@ typedef struct {
 	FILE * file;
 	char * file_path;
 	char * format;
+	int flush_log;
 	int STOP;
 	int data;
 	int NB_MESSAGE_ENV;
 	int NB_MESSAGE_REC;
+	int NB_WORKER_ADD;
 	int freq_heartbeat;
 	int pipe[2];
 	pthread_mutex_t MUTEX;

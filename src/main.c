@@ -9,34 +9,29 @@
 #include <unistd.h>
 #include <pthread.h>
 
-#define NB_ADD 5
 #define NB_SHOW 0
 #define NB_HEART 1
 #define NB_LOG 5
 
-pthread_t threads[NB_ADD + NB_SHOW + NB_LOG + NB_HEART];
 
 int main(void){
 	// Var Init
 	Configuration shared;
-	//shared.data = shared.STOP = shared.NB_MESSAGE_REC = shared.NB_MESSAGE_ENV = 0;
 
-	// File Init
-	//int size_path_log = snprintf(NULL,0,"logs/app_exit.log");
-	//shared.file_path = (char *) malloc( sizeof(char) * size_path_log );
-	//shared.file_path = "logs/app_exit.log";
-	//shared.file = fopen(shared.file_path,"a+");
 	if( parse_conf(&shared) == -1){
 		printf("Couldn't parse configuration file\n");
 		exit(EXIT_FAILURE);
 	}
+
+	// didn't want to lose time changing name everywhere
+	int NB_ADD = shared.NB_WORKER_ADD;
+	pthread_t threads[NB_ADD + NB_SHOW + NB_LOG + NB_HEART];
 
 	// Pipe Init
 	if( pipe(shared.pipe) == -1 ){
 		printf("Couldn't create pipe\n");
 		exit(EXIT_FAILURE);
 	}
-	//printf("main : pipe read = %d write = %d\n",shared.pipe[0],shared.pipe[1]);
 
 	// Pthread Init
 	pthread_mutex_init(&shared.MUTEX,NULL);
