@@ -147,7 +147,7 @@ void * worker_heartbeat(void * arg){
 	struct timespec rec_heartbeat = {(shared->freq_heartbeat/1000) , (shared->freq_heartbeat%1000) * pow(10,6)};
 
 	float t_since_start = 0;
-	while( shared->STOP != 1 ){
+	while( shared->STOP != 1 && shared->enable_show == 1){
 		t_since_start += (rec_heartbeat.tv_sec + rec_heartbeat.tv_nsec/pow(10,9));
 		printf("Time since start = %f.\n",t_since_start);
 
@@ -164,6 +164,40 @@ void * worker_heartbeat(void * arg){
 	}
 	pthread_exit(NULL);
 }
+
+void * worker_fifo(void * arg){
+	Configuration * shared = (Configuration * ) arg;
+
+	// Open FIFO
+	shared->fifo = fopen(shared->fifo_path,"r+");
+
+	// Read FIFO
+	char * line = NULL;
+	size_t len;
+
+	while( shared->STOP != 1 ){
+		getline(&line,&len,shared->fifo);
+		if( strcmp(line,"enable_show") == 0){
+			shared->enable_show = 1;
+		}else if( strcmp(line,"disable_show") == 0){
+			shared->enable_show = 0;
+		}else if( strcmp(line,"stop") == 0){
+			shared->STOP = 1;
+		}else if (strcmp(line,"flush_on") == 0){
+			shared->flush_log = 1;
+		}else if (strcmp(line,"flush_off") == 0){
+			shared->flush_log = 0;
+		}else{
+			printf("Command not recognized.\n");
+		}
+	}
+
+	//Free and Close FIFO
+	free(line);
+	fclose(shared->fifo);
+	pthread_exit(NULL);
+}
+
 
 void * worker_show(void * arg){
 	struct timespec rec_show = {1,0};

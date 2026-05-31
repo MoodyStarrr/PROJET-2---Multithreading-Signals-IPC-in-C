@@ -9,8 +9,11 @@
 
 typedef struct {
 	FILE * file;
+	FILE * fifo;
+	char * fifo_path;
 	char * file_path;
 	char * format;
+	int enable_show;
 	int flush_log;
 	int STOP;
 	int data;

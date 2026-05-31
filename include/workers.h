@@ -9,4 +9,6 @@ void * worker_heartbeat(void * arg);
 
 void * worker_log(void * arg);
 
+void * worker_fifo(void * arg);
+
 #endif

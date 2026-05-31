@@ -11,6 +11,7 @@
 
 #define NB_SHOW 0
 #define NB_HEART 1
+#define NB_FIFO 1
 #define NB_LOG 5
 
 
@@ -25,7 +26,14 @@ int main(void){
 
 	// didn't want to lose time changing name everywhere
 	int NB_ADD = shared.NB_WORKER_ADD;
-	pthread_t threads[NB_ADD + NB_SHOW + NB_LOG + NB_HEART];
+	pthread_t threads[NB_ADD + NB_SHOW + NB_LOG + NB_HEART + NB_FIFO];
+
+	// FIFO Creation
+	shared.fifo_path = "logs/fifo";
+	if( mkfifo(shared.fifo_path,0666) == -1 ){
+		printf("Couldn't create FIFO\n");
+		exit(EXIT_FAILURE);
+	}
 
 	// Pipe Init
 	if( pipe(shared.pipe) == -1 ){
@@ -68,6 +76,12 @@ int main(void){
 		}
 	}
 
+	for(int i = NB_SHOW + NB_ADD + NB_HEART + NB_LOG; i < NB_SHOW + NB_ADD + NB_HEART + NB_LOG + NB_FIFO; i++){
+		if( pthread_create(&threads[i],NULL,*worker_fifo,&shared) != 0 ){
+			printf("Couldn't create fifo\n");
+			exit(EXIT_FAILURE);
+		}
+	}
 	while( !check_stop_requested() ){
 		sleep(1);
 	};
@@ -85,7 +99,7 @@ int main(void){
 	wait_for_ending();
 	close(shared.pipe[1]);
 
-	for(int i = NB_ADD + NB_SHOW + NB_HEART; i < NB_HEART + NB_ADD + NB_SHOW + NB_LOG; i++){
+	for(int i = NB_ADD + NB_SHOW + NB_HEART; i < NB_HEART + NB_ADD + NB_SHOW + NB_LOG + NB_FIFO; i++){
 
 		if( pthread_join(threads[i],NULL) != 0 ){
 			printf("Couldn't join all log threads\n");
@@ -96,7 +110,9 @@ int main(void){
 	close(shared.pipe[0]);
 
 	pthread_mutex_destroy(&shared.MUTEX);
-	//free(shared.file_path);
+	free(shared.file_path);
+	free(shared.format);
 	fclose(shared.file);
+	remove(shared.fifo_path);
 	return EXIT_SUCCESS;
 }
