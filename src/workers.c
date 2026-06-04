@@ -177,15 +177,15 @@ void * worker_fifo(void * arg){
 
 	while( shared->STOP != 1 ){
 		getline(&line,&len,shared->fifo);
-		if( strcmp(line,"enable_show") == 0){
+		if( strcmp(line,"enable_show\n") == 0){
 			shared->enable_show = 1;
-		}else if( strcmp(line,"disable_show") == 0){
+		}else if( strcmp(line,"disable_show\n") == 0){
 			shared->enable_show = 0;
-		}else if( strcmp(line,"stop") == 0){
+		}else if( strcmp(line,"stop\n") == 0){
 			shared->STOP = 1;
-		}else if (strcmp(line,"flush_on") == 0){
+		}else if (strcmp(line,"flush_on\n") == 0){
 			shared->flush_log = 1;
-		}else if (strcmp(line,"flush_off") == 0){
+		}else if (strcmp(line,"flush_off\n") == 0){
 			shared->flush_log = 0;
 		}else{
 			printf("Command not recognized.\n");
