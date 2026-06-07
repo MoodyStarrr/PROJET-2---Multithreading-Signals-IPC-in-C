@@ -32,7 +32,7 @@ ipc_status_t read_msg(int pipe_read_id, Message * received){
 
 int parse_conf(Configuration * shared){
 	shared->data = 0;
-	shared->enable_show = 1;
+	shared->enable_show = 0;
 	shared->STOP = 0;
 	shared->NB_MESSAGE_REC = 0;
 	shared->NB_MESSAGE_ENV = 0;

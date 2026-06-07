@@ -8,11 +8,13 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #define NB_SHOW 0
 #define NB_HEART 1
 #define NB_FIFO 1
-#define NB_LOG 5
+#define NB_LOG 1
 
 
 int main(void){
@@ -43,6 +45,7 @@ int main(void){
 
 	// Pthread Init
 	pthread_mutex_init(&shared.MUTEX,NULL);
+	pthread_cond_init(&shared.data_ready,NULL);
 	
 	// Signal Handling
 	init_signal();
@@ -110,6 +113,7 @@ int main(void){
 	close(shared.pipe[0]);
 
 	pthread_mutex_destroy(&shared.MUTEX);
+	pthread_cond_destroy(&shared.data_ready);
 	free(shared.file_path);
 	free(shared.format);
 	fclose(shared.file);

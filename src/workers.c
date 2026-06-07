@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <math.h>
+#include <poll.h>
 
 void * worker_add(void * arg){
 	struct timespec rec_add = {0,250000000};
@@ -64,6 +65,7 @@ void * worker_add(void * arg){
 		{
 			case PIPE_OK :
 				run = 1;
+				pthread_cond_signal(&shared->data_ready);
 				break;
 			case PIPE_CLOSED :
 				run = 0;
@@ -89,7 +91,6 @@ void * worker_add(void * arg){
 }
 
 void * worker_log(void * arg){
-	struct timespec rec_log = {0,125000000};
 	Configuration * shared = (Configuration * ) arg;
 
 	int run = 1;
@@ -105,6 +106,8 @@ void * worker_log(void * arg){
 		{
 			case PIPE_OK:
 				run = 1;
+				pthread_mutex_lock( &(shared->MUTEX) );
+				pthread_cond_wait( &(shared->data_ready),&(shared->MUTEX) );
 				// Increment NB_MESSAGE_REC
 				shared->NB_MESSAGE_REC++;
 		
@@ -116,8 +119,8 @@ void * worker_log(void * arg){
 				fputs(to_log,shared->file);
 				if(shared->flush_log == 1)
 					fflush(shared->file);
-				
 
+				pthread_mutex_unlock( &(shared->MUTEX) );
 				// Free pour éviter les leaks
 				free(received.ptr);
 
@@ -136,7 +139,6 @@ void * worker_log(void * arg){
 
 		}
 
-		nanosleep(&rec_log,NULL);
 	}
 
 	pthread_exit(NULL);
@@ -169,27 +171,38 @@ void * worker_fifo(void * arg){
 	Configuration * shared = (Configuration * ) arg;
 
 	// Open FIFO
-	shared->fifo = fopen(shared->fifo_path,"r+");
+	shared->fifo = fopen(shared->fifo_path,"r");
 
 	// Read FIFO
 	char * line = NULL;
 	size_t len;
 
 	while( shared->STOP != 1 ){
-		getline(&line,&len,shared->fifo);
-		if( strcmp(line,"enable_show\n") == 0){
-			shared->enable_show = 1;
-		}else if( strcmp(line,"disable_show\n") == 0){
-			shared->enable_show = 0;
-		}else if( strcmp(line,"stop\n") == 0){
-			shared->STOP = 1;
-		}else if (strcmp(line,"flush_on\n") == 0){
-			shared->flush_log = 1;
-		}else if (strcmp(line,"flush_off\n") == 0){
-			shared->flush_log = 0;
+		struct pollfd pfd = {fileno(shared->fifo), POLLIN, 0}; // Utilisation de fileno pour donner le numéro du descripteur
+		int res = poll(&pfd,1,5000); // entree : struct pollfd, nb de descripeturs dans la struct, temps d'attente
+		if( res > 0 ){
+			getline(&line,&len,shared->fifo);
+			//printf("%s\n",line);
+			pthread_mutex_lock( &(shared->MUTEX) );
+			if( strcmp(line,"enable_show\n") == 0){
+				shared->enable_show = 1;
+			}else if( strcmp(line,"disable_show\n") == 0){
+				shared->enable_show = 0;
+			}else if( strcmp(line,"stop\n") == 0){
+				shared->STOP = 1;
+			}else if (strcmp(line,"flush_on\n") == 0){
+				shared->flush_log = 1;
+			}else if (strcmp(line,"flush_off\n") == 0){
+				shared->flush_log = 0;
+			}else{
+				printf("Command not recognized.\n");
+			}
+			pthread_mutex_unlock( &(shared->MUTEX) );
+		}else if( res == 0 ){
 		}else{
-			printf("Command not recognized.\n");
-		}
+			break;
+		}	
+
 	}
 
 	//Free and Close FIFO

@@ -23,6 +23,7 @@ typedef struct {
 	int freq_heartbeat;
 	int pipe[2];
 	pthread_mutex_t MUTEX;
+	pthread_cond_t data_ready;
 }Configuration;
 
 typedef struct {
