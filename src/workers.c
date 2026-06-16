@@ -87,6 +87,7 @@ void * worker_add(void * arg){
 		nanosleep(&rec_add,NULL);
 	}
 
+	printf("Closing add  TRHEAD\n");
 	pthread_exit(NULL);
 }
 
@@ -108,6 +109,10 @@ void * worker_log(void * arg){
 				run = 1;
 				pthread_mutex_lock( &(shared->MUTEX) );
 				pthread_cond_wait( &(shared->data_ready),&(shared->MUTEX) );
+				if(shared->STOP == 1){
+					break;
+				}
+
 				// Increment NB_MESSAGE_REC
 				shared->NB_MESSAGE_REC++;
 		
@@ -141,6 +146,7 @@ void * worker_log(void * arg){
 
 	}
 
+	printf("Closing log TRHEAD\n");
 	pthread_exit(NULL);
 }
 
@@ -149,10 +155,12 @@ void * worker_heartbeat(void * arg){
 	struct timespec rec_heartbeat = {(shared->freq_heartbeat/1000) , (shared->freq_heartbeat%1000) * pow(10,6)};
 
 	float t_since_start = 0;
-	while( shared->STOP != 1 && shared->enable_show == 1){
+	while( shared->STOP != 1){
 		t_since_start += (rec_heartbeat.tv_sec + rec_heartbeat.tv_nsec/pow(10,9));
-		printf("Time since start = %f.\n",t_since_start);
 
+		if(shared->enable_show == 1)
+		{
+		printf("Time since start = %f.\n",t_since_start);
 		pthread_mutex_lock( &(shared->MUTEX) );
 
 		printf("%d messages sent.\n",shared->NB_MESSAGE_ENV);
@@ -161,9 +169,11 @@ void * worker_heartbeat(void * arg){
 		(shared->NB_MESSAGE_ENV != shared->NB_MESSAGE_REC) ? printf("nb msg sent != nb msg received\n") :printf("Link OK\n\n") ;
 
 		pthread_mutex_unlock( &(shared->MUTEX) );
+		}
 		nanosleep(&rec_heartbeat,NULL);
 
 	}
+	printf("Closing heart TRHEAD\n");
 	pthread_exit(NULL);
 }
 
@@ -179,10 +189,10 @@ void * worker_fifo(void * arg){
 
 	while( shared->STOP != 1 ){
 		struct pollfd pfd = {fileno(shared->fifo), POLLIN, 0}; // Utilisation de fileno pour donner le numéro du descripteur
-		int res = poll(&pfd,1,5000); // entree : struct pollfd, nb de descripeturs dans la struct, temps d'attente
+		int res = poll(&pfd,1,500); // entree : struct pollfd, nb de descripeturs dans la struct, temps d'attente
 		if( res > 0 ){
 			getline(&line,&len,shared->fifo);
-			//printf("%s\n",line);
+			printf("%s\n",line);
 			pthread_mutex_lock( &(shared->MUTEX) );
 			if( strcmp(line,"enable_show\n") == 0){
 				shared->enable_show = 1;
@@ -208,6 +218,7 @@ void * worker_fifo(void * arg){
 	//Free and Close FIFO
 	free(line);
 	fclose(shared->fifo);
+	printf("Closing Fifo TRHEAD\n");
 	pthread_exit(NULL);
 }
 

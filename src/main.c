@@ -100,6 +100,11 @@ int main(void){
 	
 	// Signal Ending
 	wait_for_ending();
+	if( pthread_cond_broadcast( &(shared.data_ready) ) ){
+		printf("Failed broadcast\n");
+		exit(EXIT_FAILURE);
+	}
+
 	close(shared.pipe[1]);
 
 	for(int i = NB_ADD + NB_SHOW + NB_HEART; i < NB_HEART + NB_ADD + NB_SHOW + NB_LOG + NB_FIFO; i++){
