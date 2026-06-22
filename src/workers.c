@@ -11,8 +11,10 @@
 #include <time.h>
 #include <pthread.h>
 #include <string.h>
+#include <signal.h>
 #include <math.h>
 #include <poll.h>
+#include <fcntl.h>
 
 void * worker_add(void * arg){
 	struct timespec rec_add = {0,250000000};
@@ -110,6 +112,7 @@ void * worker_log(void * arg){
 				pthread_mutex_lock( &(shared->MUTEX) );
 				pthread_cond_wait( &(shared->data_ready),&(shared->MUTEX) );
 				if(shared->STOP == 1){
+					run = 0;
 					break;
 				}
 
@@ -146,7 +149,7 @@ void * worker_log(void * arg){
 
 	}
 
-	printf("Closing log TRHEAD\n");
+	printf("Closing log THREAD\n");
 	pthread_exit(NULL);
 }
 
@@ -181,18 +184,19 @@ void * worker_fifo(void * arg){
 	Configuration * shared = (Configuration * ) arg;
 
 	// Open FIFO
-	shared->fifo = fopen(shared->fifo_path,"r");
+	shared->fifo = open(shared->fifo_path, O_RDONLY | O_NONBLOCK);
 
 	// Read FIFO
 	char * line = NULL;
 	size_t len;
 
 	while( shared->STOP != 1 ){
-		struct pollfd pfd = {fileno(shared->fifo), POLLIN, 0}; // Utilisation de fileno pour donner le numéro du descripteur
+		struct pollfd pfd = {shared->fifo, POLLIN, 0};
 		int res = poll(&pfd,1,500); // entree : struct pollfd, nb de descripeturs dans la struct, temps d'attente
 		if( res > 0 ){
-			getline(&line,&len,shared->fifo);
-			printf("%s\n",line);
+			FILE * fifo_fd = fdopen( shared->fifo, "r");
+			getline(&line,&len,fifo_fd);
+			//printf("%s\n",line);
 			pthread_mutex_lock( &(shared->MUTEX) );
 			if( strcmp(line,"enable_show\n") == 0){
 				shared->enable_show = 1;
@@ -200,6 +204,10 @@ void * worker_fifo(void * arg){
 				shared->enable_show = 0;
 			}else if( strcmp(line,"stop\n") == 0){
 				shared->STOP = 1;
+				if( pthread_kill(signal_handler_tid,SIGTERM) ){
+					printf("Couldn't kill signal handler\n");
+					exit(EXIT_FAILURE);
+				}
 			}else if (strcmp(line,"flush_on\n") == 0){
 				shared->flush_log = 1;
 			}else if (strcmp(line,"flush_off\n") == 0){
@@ -217,7 +225,7 @@ void * worker_fifo(void * arg){
 
 	//Free and Close FIFO
 	free(line);
-	fclose(shared->fifo);
+	close(shared->fifo);
 	printf("Closing Fifo TRHEAD\n");
 	pthread_exit(NULL);
 }
