@@ -186,17 +186,38 @@ void * worker_fifo(void * arg){
 	// Open FIFO
 	shared->fifo = open(shared->fifo_path, O_RDONLY | O_NONBLOCK);
 
-	// Read FIFO
-	char * line = NULL;
-	size_t len;
+	char * line;
 
 	while( shared->STOP != 1 ){
 		struct pollfd pfd = {shared->fifo, POLLIN, 0};
 		int res = poll(&pfd,1,500); // entree : struct pollfd, nb de descripeturs dans la struct, temps d'attente
 		if( res > 0 ){
-			FILE * fifo_fd = fdopen( shared->fifo, "r");
-			getline(&line,&len,fifo_fd);
-			//printf("%s\n",line);
+			//FILE * fifo_fd = fdopen( shared->fifo, "r");
+			
+			char character;
+			int len;
+			int index = 0;
+			line = (char *) malloc( sizeof(char) * 20 );	
+			if( line == NULL )
+				exit(EXIT_FAILURE);
+
+			while( len = read(shared->fifo,&character,1) > 0 ){
+				line[index++] = character;
+			}
+
+			line = (char *) realloc(line,sizeof(char)*index);
+
+			if( len == 0 ){
+				close(shared->fifo);
+				shared->fifo = open(shared->fifo_path, O_RDONLY | O_NONBLOCK);
+			}
+				
+
+			if( len < 0 )
+				exit(EXIT_FAILURE);
+
+			//printf("%s",line);
+
 			pthread_mutex_lock( &(shared->MUTEX) );
 			if( strcmp(line,"enable_show\n") == 0){
 				shared->enable_show = 1;
@@ -214,8 +235,10 @@ void * worker_fifo(void * arg){
 				shared->flush_log = 0;
 			}else{
 				printf("Command not recognized.\n");
+				sleep(3);
 			}
 			pthread_mutex_unlock( &(shared->MUTEX) );
+			free(line);
 		}else if( res == 0 ){
 		}else{
 			break;
