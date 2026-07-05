@@ -19,7 +19,9 @@
 
 int main(void){
 	// Var Init
-	Configuration shared;
+	Config Configuration;
+	RuntimeState Etat;
+	IpcHandles IPC;
 
 	if( parse_conf(&shared) == -1){
 		printf("Couldn't parse configuration file\n");

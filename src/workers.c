@@ -103,8 +103,8 @@ void * worker_log(void * arg){
 		// Lecture du pipe
 		ipc_status_t status = read_msg( shared->pipe[0], &received);
 		char * buffer = (char *) received.ptr;
-		char to_log[received.length];
-		memset(to_log,0,sizeof(to_log));
+		char * to_log = (char *) malloc( sizeof(char) * received.length);
+	//	memset(to_log,0,sizeof(to_log));
 		switch (status)
 		{
 			case PIPE_OK:
@@ -131,6 +131,7 @@ void * worker_log(void * arg){
 				pthread_mutex_unlock( &(shared->MUTEX) );
 				// Free pour éviter les leaks
 				free(received.ptr);
+				free(to_log);
 
 				break;
 			case PIPE_EOF:
@@ -206,6 +207,7 @@ void * worker_fifo(void * arg){
 			}
 
 			line = (char *) realloc(line,sizeof(char)*index);
+			line[strcspn(line,"\r\n")] = '\0';
 
 			if( len == 0 ){
 				close(shared->fifo);
@@ -219,26 +221,26 @@ void * worker_fifo(void * arg){
 			//printf("%s",line);
 
 			pthread_mutex_lock( &(shared->MUTEX) );
-			if( strcmp(line,"enable_show\n") == 0){
+			if( strcmp(line,"enable_show") == 0){
 				shared->enable_show = 1;
-			}else if( strcmp(line,"disable_show\n") == 0){
+			}else if( strcmp(line,"disable_show") == 0){
 				shared->enable_show = 0;
-			}else if( strcmp(line,"stop\n") == 0){
+			}else if( strcmp(line,"stop") == 0){
 				shared->STOP = 1;
 				if( pthread_kill(signal_handler_tid,SIGTERM) ){
 					printf("Couldn't kill signal handler\n");
 					exit(EXIT_FAILURE);
 				}
-			}else if (strcmp(line,"flush_on\n") == 0){
+			}else if (strcmp(line,"flush_on") == 0){
 				shared->flush_log = 1;
-			}else if (strcmp(line,"flush_off\n") == 0){
+			}else if (strcmp(line,"flush_off") == 0){
 				shared->flush_log = 0;
 			}else{
 				printf("Command not recognized.\n");
 				sleep(3);
 			}
 			pthread_mutex_unlock( &(shared->MUTEX) );
-			free(line);
+			//free(line);
 		}else if( res == 0 ){
 		}else{
 			break;

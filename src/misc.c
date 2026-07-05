@@ -30,50 +30,54 @@ ipc_status_t read_msg(int pipe_read_id, Message * received){
 	return UNKNOWN;
 }
 
-int parse_conf(Configuration * shared){
-	shared->data = 0;
-	shared->enable_show = 0;
-	shared->STOP = 0;
-	shared->NB_MESSAGE_REC = 0;
-	shared->NB_MESSAGE_ENV = 0;
+int parse_conf(Config * Configuration, RuntimeState * Etat)
+	Etat->Data = 0;
+	Etat->EnableShow = 0;
+	Etat->StopFlag = 0;
+	Etat->NombreMessageRecu = 0;
+	Etat->NombreMessageEnvoye = 0;
 
-	FILE * conf_file = fopen("systemd/projet_2_app.conf","r+");
+	FILE * ConfigFile = fopen("systemd/projet_2_app.conf","r+");
+	if (ConfigFile == NULL){
+		printf("Couldn't open configuration file");
+		exit(EXIT_FAILURE);
+	}
 	char * line = NULL;
 	size_t len;
 
-	while(getline(&line,&len,conf_file) != -1){
+	while(getline(&line,&len,ConfigFile) != -1){
 		char * token = strtok(line,"=");
 
 		if( strcmp(token,"log_path") == 0 ){
 			token = strtok(NULL,"\n");
-			int size_path_log = snprintf(NULL,0,token);
-			shared->file_path = (char *) malloc(sizeof(char) * size_path_log);
-			memcpy(shared->file_path,token, sizeof(char) * size_path_log);
+			int size_path_log = strlen(token);
+			Etat->file_path = (char *) malloc(sizeof(char) * size_path_log);
+			memcpy(Etat->file_path,token, sizeof(char) * size_path_log);
 		}else if( strcmp(token,"log_format") == 0 ){
 			token = strtok(NULL,"\n");
-			int size_log_format = snprintf(NULL,0,token);
-			shared->format = (char *) malloc(sizeof(char) * size_log_format);
-			memcpy(shared->format,token,sizeof(char) * size_log_format);
+			int size_log_format = strlen(token);
+			Etat->format = (char *) malloc(sizeof(char) * size_log_format);
+			memcpy(Etat->format,token,sizeof(char) * size_log_format);
 		}else if( strcmp(token,"period_ms") == 0 ){
 			token = strtok(NULL,"\n");
 			int value = (int) strtol(token,(char **) NULL,10);
-			shared->freq_heartbeat = value;
+			Etat->freq_heartbeat = value;
 		}else if( strcmp(token,"flush_log") == 0 ){
 			token = strtok(NULL,"\n");
 			int value = (int) strtol(token,(char **) NULL,10);
-			shared->flush_log = value;
+			Etat->flush_log = value;
 		}else if( strcmp(token,"NB_WORKER_ADD") == 0 ){
 			token = strtok(NULL,"\n");
 			int value = (int) strtol(token,(char **) NULL,10);
-			shared->NB_WORKER_ADD = value;
+			Etat->NB_WORKER_ADD = value;
 		}else{
 			//printf("%s is not part of configuration.\n",token);
 		}		
 	}
 
-	shared->file = fopen(shared->file_path,"a+");
+	Etat->file = fopen(Etat->file_path,"a+");
 
-	fclose(conf_file);
+	fclose(ConfigFile);
 	free(line);
 	return EXIT_SUCCESS;
 }
