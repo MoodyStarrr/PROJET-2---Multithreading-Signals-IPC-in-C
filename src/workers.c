@@ -55,11 +55,11 @@ void * worker_add(void * arg){
 		// "Ecriture" du message
 		Message to_send;
 		to_send.ptr = buffer;
-		free(buffer);
 		to_send.length = size;
 
 		// Ecriture dans le pipe
 		ipc_status_t status = write_msg( Entree->IPC->Pipe_fd[1], &to_send);
+		free(buffer);
 
 		// Increment NombreMessageEnvoye
 		Entree->Etat->NombreMessageEnvoye++;
@@ -104,7 +104,7 @@ void * worker_log(void * arg){
 		// Lecture du pipe
 		ipc_status_t status = read_msg( Entree->IPC->Pipe_fd[0], &received);
 		char * buffer = (char *) received.ptr;
-		char * to_log = (char *) malloc( sizeof(char) * received.length);
+		char * to_log = (char *) malloc( sizeof(char) * (received.length + 1) );
 	//	memset(to_log,0,sizeof(to_log));
 		switch (status)
 		{
@@ -124,6 +124,7 @@ void * worker_log(void * arg){
 				for(int i = 0 ; i < received.length ; i++){
 					to_log[i] = buffer[i];
 				}
+				to_log[received.length + 1] = '\0';
 
 				// Ecriture dans le log
 				fputs(to_log,Entree->IPC->LogFile);
@@ -164,18 +165,19 @@ void * worker_heartbeat(void * arg){
 	while( Entree->Etat->StopFlag != 1){
 		t_since_start += (rec_heartbeat.tv_sec + rec_heartbeat.tv_nsec/pow(10,9));
 
+		pthread_mutex_lock( &(Entree->Etat->MUTEX) );
 		if(Entree->Etat->EnableShow == 1)
 		{
 		printf("Time since start = %f.\n",t_since_start);
-		pthread_mutex_lock( &(Entree->Etat->MUTEX) );
 
 		printf("%d messages sent.\n",Entree->Etat->NombreMessageEnvoye);
 		printf("%d messages received\n",Entree->Etat->NombreMessageRecu);
 		
 		(Entree->Etat->NombreMessageEnvoye != Entree->Etat->NombreMessageRecu) ? printf("nb msg sent != nb msg received\n") :printf("Link OK\n\n") ;
 
-		pthread_mutex_unlock( &(Entree->Etat->MUTEX) );
 		}
+		pthread_mutex_unlock( &(Entree->Etat->MUTEX) );
+
 		nanosleep(&rec_heartbeat,NULL);
 
 	}
@@ -226,9 +228,9 @@ void * worker_fifo(void * arg){
 			pthread_mutex_lock( &(Entree->Etat->MUTEX) );
 			if( strcmp(line,"EnableShow") == 0){
 				Entree->Etat->EnableShow = 1;
-			}else if( strcmp(line,"disable_show") == 0){
+			}else if( strcmp(line,"DisableShow") == 0){
 				Entree->Etat->EnableShow = 0;
-			}else if( strcmp(line,"stop") == 0){
+			}else if( strcmp(line,"Stop") == 0){
 				Entree->Etat->StopFlag = 1;
 				if( pthread_kill(signal_handler_tid,SIGTERM) ){
 					printf("Couldn't kill signal handler\n");
@@ -240,7 +242,6 @@ void * worker_fifo(void * arg){
 				Entree->Etat->FlushLog = 0;
 			}else{
 				printf("Command not recognized.\n");
-				sleep(3);
 			}
 			pthread_mutex_unlock( &(Entree->Etat->MUTEX) );
 			free(line);

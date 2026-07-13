@@ -50,7 +50,7 @@ int parse_conf(Config * Configuration, RuntimeState * Etat, IpcHandles * IPC){
 
 		if( strcmp(token,"log_path") == 0 ){
 			token = strtok(NULL,"\n");
-			int size_path_log = strlen(token);
+			int size_path_log = strlen(token) + 1;
 			Configuration->ConfigFilePath = (char *) malloc(sizeof(char) * size_path_log);
 			memcpy(Configuration->ConfigFilePath,token, sizeof(char) * size_path_log);
 		}else if( strcmp(token,"log_format") == 0 ){
