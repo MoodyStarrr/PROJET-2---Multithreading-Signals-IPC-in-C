@@ -26,6 +26,9 @@ void * worker_add(void * arg){
 
 	int run = 1;
 	while(1){
+		// Race Protection
+		pthread_mutex_lock( &(Entree->Etat->MUTEX) );
+
 		if(Entree->Etat->StopFlag) break;
 		if(run == 0) break;
 
@@ -36,9 +39,6 @@ void * worker_add(void * arg){
 		struct tm * timeinfo = localtime( &rawtime );
 		// Formatage
 		strftime(time_buffer,TIME_LENGTH,"%d/%m/%Y %H:%M:%S",timeinfo);
-
-		// Race Protection
-		pthread_mutex_lock( &(Entree->Etat->MUTEX) );
 
 		// Increment
 		Entree->Etat->Data++;
@@ -59,7 +59,6 @@ void * worker_add(void * arg){
 
 		// Ecriture dans le pipe
 		ipc_status_t status = write_msg( Entree->IPC->Pipe_fd[1], &to_send);
-		free(buffer);
 
 		// Increment NombreMessageEnvoye
 		Entree->Etat->NombreMessageEnvoye++;
@@ -124,7 +123,7 @@ void * worker_log(void * arg){
 				for(int i = 0 ; i < received.length ; i++){
 					to_log[i] = buffer[i];
 				}
-				to_log[received.length + 1] = '\0';
+				to_log[received.length] = '\0';
 
 				// Ecriture dans le log
 				fputs(to_log,Entree->IPC->LogFile);
@@ -162,10 +161,12 @@ void * worker_heartbeat(void * arg){
 	struct timespec rec_heartbeat = {(Entree->Configuration->FreqHeartbeat/1000) , (Entree->Configuration->FreqHeartbeat%1000) * pow(10,6)};
 
 	float t_since_start = 0;
-	while( Entree->Etat->StopFlag != 1){
+	while(1){
+		pthread_mutex_lock( &(Entree->Etat->MUTEX) );
+		if(Entree->Etat->StopFlag) break;
+
 		t_since_start += (rec_heartbeat.tv_sec + rec_heartbeat.tv_nsec/pow(10,9));
 
-		pthread_mutex_lock( &(Entree->Etat->MUTEX) );
 		if(Entree->Etat->EnableShow == 1)
 		{
 		printf("Time since start = %f.\n",t_since_start);
@@ -193,7 +194,11 @@ void * worker_fifo(void * arg){
 
 	char * line;
 
-	while( Entree->Etat->StopFlag != 1 ){
+	while( 1 ){
+		pthread_mutex_lock( &(Entree->Etat->MUTEX) );
+		if(Entree->Etat->StopFlag) break;
+		pthread_mutex_unlock( &(Entree->Etat->MUTEX) );
+
 		struct pollfd pfd = {Entree->IPC->Fifo_fd, POLLIN, 0};
 		int res = poll(&pfd,1,500); // entree : struct pollfd, nb de descripeturs dans la struct, temps d'attente
 		if( res > 0 ){
