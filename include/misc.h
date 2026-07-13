@@ -7,25 +7,6 @@
 #include <pthread.h>
 #include <unistd.h>
 
-typedef struct {
-	FILE * file;
-	char * fifo_path;
-	char * file_path;
-	char * format;
-	int fifo;
-	int enable_show;
-	int flush_log;
-	int STOP;
-	int data;
-	int NB_MESSAGE_ENV;
-	int NB_MESSAGE_REC;
-	int NB_WORKER_ADD;
-	int freq_heartbeat;
-	int pipe[2];
-	pthread_mutex_t MUTEX;
-	pthread_cond_t data_ready;
-}Configuration;
-
 typedef struct{
 	char * ConfigFilePath;
 	char * ConfigFormat;
@@ -52,6 +33,12 @@ typedef struct {
 }IpcHandles;
 
 typedef struct {
+	Config * Configuration;
+	RuntimeState * Etat;
+	IpcHandles * IPC;
+}ArgThread;
+
+typedef struct {
 	void * ptr;
 	int length;
 }Message;
@@ -66,7 +53,7 @@ typedef enum{
 
 ipc_status_t write_msg(int pipe_write_id, Message * to_send);
 ipc_status_t read_msg(int pipe_read_id, Message * received);
-int parse_conf(Config * Configuration, RuntimeState * Etat);
+int parse_conf(Config * Configuration, RuntimeState * Etat, IpcHandles * IPC);
 
 
 #endif

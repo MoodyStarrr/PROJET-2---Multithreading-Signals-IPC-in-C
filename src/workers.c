@@ -19,14 +19,14 @@
 void * worker_add(void * arg){
 	struct timespec rec_add = {0,250000000};
 
-	Configuration * shared = (Configuration * ) arg;
+	ArgThread * Entree = (ArgThread * ) arg;
 
 	static char time_buffer[TIME_LENGTH];
 	time_t rawtime;
 
 	int run = 1;
 	while(1){
-		if(shared->STOP) break;
+		if(Entree->Etat->StopFlag) break;
 		if(run == 0) break;
 
 
@@ -38,15 +38,15 @@ void * worker_add(void * arg){
 		strftime(time_buffer,TIME_LENGTH,"%d/%m/%Y %H:%M:%S",timeinfo);
 
 		// Race Protection
-		pthread_mutex_lock( &(shared->MUTEX) );
+		pthread_mutex_lock( &(Entree->Etat->MUTEX) );
 
 		// Increment
-		shared->data++;
+		Entree->Etat->Data++;
 
 		// Generation du texte
-		int size = snprintf(NULL,0,"[%s]\tdata=%d\n",time_buffer,shared->data);
+		int size = snprintf(NULL,0,"[%s]\tData=%d\n",time_buffer,Entree->Etat->Data);
 		char * buffer = (char * ) malloc( (size+1) * sizeof(char));
-		int check = sprintf(buffer,"[%s]\tdata=%d\n",time_buffer,shared->data);
+		int check = sprintf(buffer,"[%s]\tData=%d\n",time_buffer,Entree->Etat->Data);
 
 		if( check != size ){
 			printf("Couldn't write properly\n");
@@ -55,19 +55,20 @@ void * worker_add(void * arg){
 		// "Ecriture" du message
 		Message to_send;
 		to_send.ptr = buffer;
+		free(buffer);
 		to_send.length = size;
 
 		// Ecriture dans le pipe
-		ipc_status_t status = write_msg( shared->pipe[1], &to_send);
+		ipc_status_t status = write_msg( Entree->IPC->Pipe_fd[1], &to_send);
 
-		// Increment NB_MESSAGE_ENV
-		shared->NB_MESSAGE_ENV++;
+		// Increment NombreMessageEnvoye
+		Entree->Etat->NombreMessageEnvoye++;
 
 		switch (status)
 		{
 			case PIPE_OK :
 				run = 1;
-				pthread_cond_signal(&shared->data_ready);
+				pthread_cond_signal(&Entree->Etat->DataReady);
 				break;
 			case PIPE_CLOSED :
 				run = 0;
@@ -83,7 +84,7 @@ void * worker_add(void * arg){
 				
 
 		// Race Protection
-		pthread_mutex_unlock( &(shared->MUTEX) );
+		pthread_mutex_unlock( &(Entree->Etat->MUTEX) );
 
 		// Périodicicté
 		nanosleep(&rec_add,NULL);
@@ -94,14 +95,14 @@ void * worker_add(void * arg){
 }
 
 void * worker_log(void * arg){
-	Configuration * shared = (Configuration * ) arg;
+	ArgThread * Entree = (ArgThread * ) arg;
 
 	int run = 1;
 	while( run == 1){
 
 		Message received;
 		// Lecture du pipe
-		ipc_status_t status = read_msg( shared->pipe[0], &received);
+		ipc_status_t status = read_msg( Entree->IPC->Pipe_fd[0], &received);
 		char * buffer = (char *) received.ptr;
 		char * to_log = (char *) malloc( sizeof(char) * received.length);
 	//	memset(to_log,0,sizeof(to_log));
@@ -109,34 +110,35 @@ void * worker_log(void * arg){
 		{
 			case PIPE_OK:
 				run = 1;
-				pthread_mutex_lock( &(shared->MUTEX) );
-				pthread_cond_wait( &(shared->data_ready),&(shared->MUTEX) );
-				if(shared->STOP == 1){
+				pthread_mutex_lock( &(Entree->Etat->MUTEX) );
+				pthread_cond_wait( &(Entree->Etat->DataReady),&(Entree->Etat->MUTEX) );
+				if(Entree->Etat->StopFlag == 1){
 					run = 0;
+					free(to_log);
 					break;
 				}
 
-				// Increment NB_MESSAGE_REC
-				shared->NB_MESSAGE_REC++;
+				// Increment NombreMessageRecu
+				Entree->Etat->NombreMessageRecu++;
 		
 				for(int i = 0 ; i < received.length ; i++){
 					to_log[i] = buffer[i];
 				}
 
 				// Ecriture dans le log
-				fputs(to_log,shared->file);
-				if(shared->flush_log == 1)
-					fflush(shared->file);
+				fputs(to_log,Entree->IPC->LogFile);
+				if(Entree->Etat->FlushLog == 1)
+					fflush(Entree->IPC->LogFile);
 
-				pthread_mutex_unlock( &(shared->MUTEX) );
+				pthread_mutex_unlock( &(Entree->Etat->MUTEX) );
 				// Free pour éviter les leaks
-				free(received.ptr);
 				free(to_log);
 
 				break;
 			case PIPE_EOF:
 				run = 0;
-				//printf("Received STOP == 1. Closing Pipe.\n");
+				free(to_log);
+				//printf("Received StopFlag == 1. Closing Pipe.\n");
 				break;
 			case PIPE_ERROR:
 				// log erreur dans le futur
@@ -155,24 +157,24 @@ void * worker_log(void * arg){
 }
 
 void * worker_heartbeat(void * arg){
-	Configuration * shared = (Configuration * ) arg;
-	struct timespec rec_heartbeat = {(shared->freq_heartbeat/1000) , (shared->freq_heartbeat%1000) * pow(10,6)};
+	ArgThread * Entree = (ArgThread * ) arg;
+	struct timespec rec_heartbeat = {(Entree->Configuration->FreqHeartbeat/1000) , (Entree->Configuration->FreqHeartbeat%1000) * pow(10,6)};
 
 	float t_since_start = 0;
-	while( shared->STOP != 1){
+	while( Entree->Etat->StopFlag != 1){
 		t_since_start += (rec_heartbeat.tv_sec + rec_heartbeat.tv_nsec/pow(10,9));
 
-		if(shared->enable_show == 1)
+		if(Entree->Etat->EnableShow == 1)
 		{
 		printf("Time since start = %f.\n",t_since_start);
-		pthread_mutex_lock( &(shared->MUTEX) );
+		pthread_mutex_lock( &(Entree->Etat->MUTEX) );
 
-		printf("%d messages sent.\n",shared->NB_MESSAGE_ENV);
-		printf("%d messages received\n",shared->NB_MESSAGE_REC);
+		printf("%d messages sent.\n",Entree->Etat->NombreMessageEnvoye);
+		printf("%d messages received\n",Entree->Etat->NombreMessageRecu);
 		
-		(shared->NB_MESSAGE_ENV != shared->NB_MESSAGE_REC) ? printf("nb msg sent != nb msg received\n") :printf("Link OK\n\n") ;
+		(Entree->Etat->NombreMessageEnvoye != Entree->Etat->NombreMessageRecu) ? printf("nb msg sent != nb msg received\n") :printf("Link OK\n\n") ;
 
-		pthread_mutex_unlock( &(shared->MUTEX) );
+		pthread_mutex_unlock( &(Entree->Etat->MUTEX) );
 		}
 		nanosleep(&rec_heartbeat,NULL);
 
@@ -182,27 +184,28 @@ void * worker_heartbeat(void * arg){
 }
 
 void * worker_fifo(void * arg){
-	Configuration * shared = (Configuration * ) arg;
+	ArgThread * Entree = (ArgThread * ) arg;
 
 	// Open FIFO
-	shared->fifo = open(shared->fifo_path, O_RDONLY | O_NONBLOCK);
+	Entree->IPC->Fifo_fd = open(Entree->IPC->FifoPath, O_RDONLY | O_NONBLOCK);
 
 	char * line;
 
-	while( shared->STOP != 1 ){
-		struct pollfd pfd = {shared->fifo, POLLIN, 0};
+	while( Entree->Etat->StopFlag != 1 ){
+		struct pollfd pfd = {Entree->IPC->Fifo_fd, POLLIN, 0};
 		int res = poll(&pfd,1,500); // entree : struct pollfd, nb de descripeturs dans la struct, temps d'attente
 		if( res > 0 ){
-			//FILE * fifo_fd = fdopen( shared->fifo, "r");
+			//FILE * IPC->Fifo_fd_fd = fdopen( Entree->IPC->Fifo_fd, "r");
 			
 			char character;
-			int len;
+			int len = 1;
 			int index = 0;
 			line = (char *) malloc( sizeof(char) * 20 );	
 			if( line == NULL )
 				exit(EXIT_FAILURE);
 
-			while( len = read(shared->fifo,&character,1) > 0 ){
+			while( len > 0 ){
+				len = read(Entree->IPC->Fifo_fd,&character,1);
 				line[index++] = character;
 			}
 
@@ -210,8 +213,8 @@ void * worker_fifo(void * arg){
 			line[strcspn(line,"\r\n")] = '\0';
 
 			if( len == 0 ){
-				close(shared->fifo);
-				shared->fifo = open(shared->fifo_path, O_RDONLY | O_NONBLOCK);
+				close(Entree->IPC->Fifo_fd);
+				Entree->IPC->Fifo_fd = open(Entree->IPC->FifoPath, O_RDONLY | O_NONBLOCK);
 			}
 				
 
@@ -220,37 +223,37 @@ void * worker_fifo(void * arg){
 
 			//printf("%s",line);
 
-			pthread_mutex_lock( &(shared->MUTEX) );
-			if( strcmp(line,"enable_show") == 0){
-				shared->enable_show = 1;
+			pthread_mutex_lock( &(Entree->Etat->MUTEX) );
+			if( strcmp(line,"EnableShow") == 0){
+				Entree->Etat->EnableShow = 1;
 			}else if( strcmp(line,"disable_show") == 0){
-				shared->enable_show = 0;
+				Entree->Etat->EnableShow = 0;
 			}else if( strcmp(line,"stop") == 0){
-				shared->STOP = 1;
+				Entree->Etat->StopFlag = 1;
 				if( pthread_kill(signal_handler_tid,SIGTERM) ){
 					printf("Couldn't kill signal handler\n");
 					exit(EXIT_FAILURE);
 				}
 			}else if (strcmp(line,"flush_on") == 0){
-				shared->flush_log = 1;
+				Entree->Etat->FlushLog = 1;
 			}else if (strcmp(line,"flush_off") == 0){
-				shared->flush_log = 0;
+				Entree->Etat->FlushLog = 0;
 			}else{
 				printf("Command not recognized.\n");
 				sleep(3);
 			}
-			pthread_mutex_unlock( &(shared->MUTEX) );
-			//free(line);
+			pthread_mutex_unlock( &(Entree->Etat->MUTEX) );
+			free(line);
 		}else if( res == 0 ){
 		}else{
+			free(line);
 			break;
 		}	
 
 	}
 
 	//Free and Close FIFO
-	free(line);
-	close(shared->fifo);
+	close(Entree->IPC->Fifo_fd);
 	printf("Closing Fifo TRHEAD\n");
 	pthread_exit(NULL);
 }
@@ -258,14 +261,14 @@ void * worker_fifo(void * arg){
 
 void * worker_show(void * arg){
 	struct timespec rec_show = {1,0};
-	Configuration * shared = (Configuration * ) arg;
+	ArgThread * Entree = (ArgThread * ) arg;
 
-	while( shared->STOP != 1 ){
-		pthread_mutex_lock( &(shared->MUTEX) );
+	while( Entree->Etat->StopFlag != 1 ){
+		pthread_mutex_lock( &(Entree->Etat->MUTEX) );
 
-		//printf("%d in shared increment\n",shared->data);
+		//printf("%d in shared increment\n",Entree->Etat->Data);
 		
-		pthread_mutex_unlock( &(shared->MUTEX) );
+		pthread_mutex_unlock( &(Entree->Etat->MUTEX) );
 		nanosleep(&rec_show,NULL);
 	}
 

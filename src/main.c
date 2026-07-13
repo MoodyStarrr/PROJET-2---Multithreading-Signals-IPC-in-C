@@ -23,66 +23,67 @@ int main(void){
 	RuntimeState Etat;
 	IpcHandles IPC;
 
-	if( parse_conf(&shared) == -1){
+	ArgThread Entree = {.Configuration = &Configuration, .Etat = &Etat, .IPC = &IPC};
+
+	if( parse_conf(&Configuration,&Etat,&IPC) == -1){
 		printf("Couldn't parse configuration file\n");
 		exit(EXIT_FAILURE);
 	}
-
 	// didn't want to lose time changing name everywhere
-	int NB_ADD = shared.NB_WORKER_ADD;
+	int NB_ADD = Configuration.NombreWorkerAdd;
 	pthread_t threads[NB_ADD + NB_SHOW + NB_LOG + NB_HEART + NB_FIFO];
 
 	// FIFO Creation
-	shared.fifo_path = "logs/fifo";
-	if( mkfifo(shared.fifo_path,0666) == -1 ){
+	IPC.FifoPath = "logs/fifo";
+	if( mkfifo(IPC.FifoPath,0666) == -1 ){
 		printf("Couldn't create FIFO\n");
 		exit(EXIT_FAILURE);
 	}
 
 	// Pipe Init
-	if( pipe(shared.pipe) == -1 ){
+	if( pipe(IPC.Pipe_fd) == -1 ){
 		printf("Couldn't create pipe\n");
 		exit(EXIT_FAILURE);
 	}
 
 	// Pthread Init
-	pthread_mutex_init(&shared.MUTEX,NULL);
-	pthread_cond_init(&shared.data_ready,NULL);
+	pthread_mutex_init(&Etat.MUTEX,NULL);
+	pthread_cond_init(&Etat.DataReady,NULL);
 	
 	// Signal Handling
 	init_signal();
 
 	// Pthread Creation
 	for(int i = 0 ; i < NB_ADD ; i++){
-		if( pthread_create(&threads[i],NULL,*worker_add,&shared) != 0 ){
+		if( pthread_create(&threads[i],NULL,*worker_add,&Entree) != 0 ){
 			printf("Couldn't create all adders\n");
 			exit(EXIT_FAILURE);
 		}
 	}
 
 	for(int i = NB_ADD ; i < NB_SHOW + NB_ADD ; i++){
-		if( pthread_create(&threads[i],NULL,*worker_show,&shared) != 0 ){
+		if( pthread_create(&threads[i],NULL,*worker_show,&Entree) != 0 ){
 			printf("Couldn't create all showers\n");
 			exit(EXIT_FAILURE);
 		}
 	}
 
 	for(int i = NB_SHOW + NB_ADD; i < NB_SHOW + NB_ADD + NB_HEART ; i++){
-		if( pthread_create(&threads[i],NULL,*worker_heartbeat,&shared) != 0 ){
+		if( pthread_create(&threads[i],NULL,*worker_heartbeat,&Entree) != 0 ){
 			printf("Couldn't create all loggers\n");
 			exit(EXIT_FAILURE);
 		}
 	}
 
 	for(int i = NB_SHOW + NB_ADD + NB_HEART ; i < NB_SHOW + NB_ADD + NB_HEART + NB_LOG ; i++){
-		if( pthread_create(&threads[i],NULL,*worker_log,&shared) != 0 ){
+		if( pthread_create(&threads[i],NULL,*worker_log,&Entree) != 0 ){
 			printf("Couldn't create all loggers\n");
 			exit(EXIT_FAILURE);
 		}
 	}
 
 	for(int i = NB_SHOW + NB_ADD + NB_HEART + NB_LOG; i < NB_SHOW + NB_ADD + NB_HEART + NB_LOG + NB_FIFO; i++){
-		if( pthread_create(&threads[i],NULL,*worker_fifo,&shared) != 0 ){
+		if( pthread_create(&threads[i],NULL,*worker_fifo,&Entree) != 0 ){
 			printf("Couldn't create fifo\n");
 			exit(EXIT_FAILURE);
 		}
@@ -90,7 +91,7 @@ int main(void){
 	while( !check_stop_requested() ){
 		sleep(1);
 	};
-	shared.STOP = check_stop_requested();
+	Etat.StopFlag = check_stop_requested();
 
 	// Pthread Join
 	for(int i = 0 ; i < NB_ADD + NB_SHOW + NB_HEART; i++){
@@ -102,12 +103,12 @@ int main(void){
 	
 	// Signal Ending
 	wait_for_ending();
-	if( pthread_cond_broadcast( &(shared.data_ready) ) ){
+	if( pthread_cond_broadcast( &(Etat.DataReady) ) ){
 		printf("Failed broadcast\n");
 		exit(EXIT_FAILURE);
 	}
 
-	close(shared.pipe[1]);
+	close(IPC.Pipe_fd[1]);
 
 	for(int i = NB_ADD + NB_SHOW + NB_HEART; i < NB_HEART + NB_ADD + NB_SHOW + NB_LOG + NB_FIFO; i++){
 
@@ -117,13 +118,13 @@ int main(void){
 		}
 	}
 
-	close(shared.pipe[0]);
+	close(IPC.Pipe_fd[0]);
 
-	pthread_mutex_destroy(&shared.MUTEX);
-	pthread_cond_destroy(&shared.data_ready);
-	free(shared.file_path);
-	free(shared.format);
-	fclose(shared.file);
-	remove(shared.fifo_path);
+	pthread_mutex_destroy(&Etat.MUTEX);
+	pthread_cond_destroy(&Etat.DataReady);
+	free(Configuration.ConfigFilePath);
+	free(Configuration.ConfigFormat);
+	fclose(IPC.LogFile);
+	remove(IPC.FifoPath);
 	return EXIT_SUCCESS;
 }

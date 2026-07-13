@@ -30,14 +30,14 @@ ipc_status_t read_msg(int pipe_read_id, Message * received){
 	return UNKNOWN;
 }
 
-int parse_conf(Config * Configuration, RuntimeState * Etat)
+int parse_conf(Config * Configuration, RuntimeState * Etat, IpcHandles * IPC){
 	Etat->Data = 0;
 	Etat->EnableShow = 0;
 	Etat->StopFlag = 0;
 	Etat->NombreMessageRecu = 0;
 	Etat->NombreMessageEnvoye = 0;
 
-	FILE * ConfigFile = fopen("systemd/projet_2_app.conf","r+");
+	FILE * ConfigFile = fopen("systemd/projet_2_app.conf","r");
 	if (ConfigFile == NULL){
 		printf("Couldn't open configuration file");
 		exit(EXIT_FAILURE);
@@ -51,31 +51,31 @@ int parse_conf(Config * Configuration, RuntimeState * Etat)
 		if( strcmp(token,"log_path") == 0 ){
 			token = strtok(NULL,"\n");
 			int size_path_log = strlen(token);
-			Etat->file_path = (char *) malloc(sizeof(char) * size_path_log);
-			memcpy(Etat->file_path,token, sizeof(char) * size_path_log);
+			Configuration->ConfigFilePath = (char *) malloc(sizeof(char) * size_path_log);
+			memcpy(Configuration->ConfigFilePath,token, sizeof(char) * size_path_log);
 		}else if( strcmp(token,"log_format") == 0 ){
 			token = strtok(NULL,"\n");
 			int size_log_format = strlen(token);
-			Etat->format = (char *) malloc(sizeof(char) * size_log_format);
-			memcpy(Etat->format,token,sizeof(char) * size_log_format);
+			Configuration->ConfigFormat = (char *) malloc(sizeof(char) * size_log_format);
+			memcpy(Configuration->ConfigFormat,token,sizeof(char) * size_log_format);
 		}else if( strcmp(token,"period_ms") == 0 ){
 			token = strtok(NULL,"\n");
 			int value = (int) strtol(token,(char **) NULL,10);
-			Etat->freq_heartbeat = value;
+			Configuration->FreqHeartbeat = value;
 		}else if( strcmp(token,"flush_log") == 0 ){
 			token = strtok(NULL,"\n");
 			int value = (int) strtol(token,(char **) NULL,10);
-			Etat->flush_log = value;
+			Etat->FlushLog = value;
 		}else if( strcmp(token,"NB_WORKER_ADD") == 0 ){
 			token = strtok(NULL,"\n");
 			int value = (int) strtol(token,(char **) NULL,10);
-			Etat->NB_WORKER_ADD = value;
+			Configuration->NombreWorkerAdd = value;
 		}else{
 			//printf("%s is not part of configuration.\n",token);
 		}		
 	}
 
-	Etat->file = fopen(Etat->file_path,"a+");
+	IPC->LogFile = fopen(Configuration->ConfigFilePath,"a+");
 
 	fclose(ConfigFile);
 	free(line);
