@@ -29,7 +29,11 @@ void * worker_add(void * arg){
 		// Race Protection
 		pthread_mutex_lock( &(Entree->Etat->MUTEX) );
 
-		if(Entree->Etat->StopFlag) break;
+		if(Entree->Etat->StopFlag){
+			pthread_mutex_unlock( &(Entree->Etat->MUTEX) );
+			break;
+		}
+
 		if(run == 0) break;
 
 
