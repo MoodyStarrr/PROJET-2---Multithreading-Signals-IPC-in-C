@@ -34,7 +34,10 @@ void * worker_add(void * arg){
 			break;
 		}
 
-		if(run == 0) break;
+		if(run == 0){
+			pthread_mutex_unlock( &(Entree->Etat->MUTEX) );
+			break;
+		}
 
 
 	       	// Attribue le temps depuis le 1er Janvier 1970 dans  la variable
