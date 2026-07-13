@@ -163,7 +163,10 @@ void * worker_heartbeat(void * arg){
 	float t_since_start = 0;
 	while(1){
 		pthread_mutex_lock( &(Entree->Etat->MUTEX) );
-		if(Entree->Etat->StopFlag) break;
+		if(Entree->Etat->StopFlag){
+			pthread_mutex_unlock( &(Entree->Etat->MUTEX) );
+		       	break;
+		}
 
 		t_since_start += (rec_heartbeat.tv_sec + rec_heartbeat.tv_nsec/pow(10,9));
 
@@ -196,7 +199,10 @@ void * worker_fifo(void * arg){
 
 	while( 1 ){
 		pthread_mutex_lock( &(Entree->Etat->MUTEX) );
-		if(Entree->Etat->StopFlag) break;
+		if(Entree->Etat->StopFlag){
+			pthread_mutex_unlock( &(Entree->Etat->MUTEX) );
+		       	break;
+		}
 		pthread_mutex_unlock( &(Entree->Etat->MUTEX) );
 
 		struct pollfd pfd = {Entree->IPC->Fifo_fd, POLLIN, 0};
@@ -264,7 +270,7 @@ void * worker_fifo(void * arg){
 	pthread_exit(NULL);
 }
 
-
+/* Was Only Here During Developping Phase
 void * worker_show(void * arg){
 	struct timespec rec_show = {1,0};
 	ArgThread * Entree = (ArgThread * ) arg;
@@ -280,3 +286,5 @@ void * worker_show(void * arg){
 
 	pthread_exit(NULL);
 }
+*/
+
